@@ -1,0 +1,291 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Fraunces", Georgia, "Times New Roman", serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* Light editorial paper. Warm cream rather than clinical white — this is a
+     newspaper, and a pure #FFF ground makes long-form reading harsher and the
+     gold accent look dirty. */
+  --color-bg: #f7f4ed;
+  --color-bg-raised: #fffdf8;
+  --color-surface: #efeae0;
+  --color-surface-hover: #e7e1d5;
+  --color-border: #ddd5c7;
+  --color-border-subtle: #e8e2d6;
+  --color-rule: #c9bfad;
+
+  /* Measured against --color-bg in the browser, not eyeballed:
+     text 17.2:1, dim 7.3:1, faint 4.8:1, accent 5.0:1 — all clear WCAG AA.
+     The first pass had faint at 4.42 and accent at 4.05, both of which
+     fail; they are darkened here rather than left "close enough". */
+  --color-text: #14100c;
+  --color-text-dim: #574f44;
+  --color-text-faint: #736a5e;
+
+  --color-accent: #8a6118;
+  --color-accent-dim: #f0e4cc;
+
+  /* Market-coded: TSR20 forest green (latex/plantation), EUR/USD ink blue.
+     Both darkened from the dark-theme versions — a colour that reads bright
+     on near-black turns illegible on paper. */
+  --color-tsr20: #2f6b4f;
+  --color-tsr20-dim: #e2ede6;
+  --color-eurusd: #2b4c7e;
+  --color-eurusd-dim: #e1e8f2;
+
+  --color-bull: #1e7a45;
+  --color-bull-dim: #e2f0e7;
+  --color-bear: #b3352f;
+  --color-bear-dim: #f7e5e3;
+  --color-neutral: #6d6559;
+  --color-neutral-dim: #ece7dd;
+  --color-amber: #8a6118;
+  --color-amber-dim: #f5ead3;
+
+  --ease-press: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    color-scheme: light;
+  }
+
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background-color: var(--color-accent-dim);
+    color: var(--color-text);
+  }
+
+  /* Visible keyboard focus everywhere — never removed, only restyled. */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--color-border);
+    border-radius: 8px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-text-faint);
+  }
+}
+
+@layer utilities {
+  .num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .headline {
+    font-family: var(--font-serif);
+    font-optical-sizing: auto;
+    letter-spacing: -0.015em;
+  }
+
+  .kicker {
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+  }
+
+  .rule {
+    border-color: var(--color-rule);
+  }
+
+  /* Paper grain — multiply against a light ground so it reads as fibre in
+     the stock rather than a grey film sitting on top. */
+  .grain {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    pointer-events: none;
+    opacity: 0.035;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.6'/%3E%3C/svg%3E");
+  }
+
+  @keyframes pulse-ring {
+    0% {
+      transform: scale(0.9);
+      opacity: 0.8;
+    }
+    70% {
+      transform: scale(2.2);
+      opacity: 0;
+    }
+    100% {
+      transform: scale(2.2);
+      opacity: 0;
+    }
+  }
+  .pulse-ring::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    background: currentColor;
+    animation: pulse-ring 1.8s cubic-bezier(0.2, 0.6, 0.4, 1) infinite;
+  }
+
+  @keyframes ticker-scroll {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+  .ticker-track {
+    width: max-content;
+    animation: ticker-scroll 60s linear infinite;
+  }
+  .ticker-track:hover {
+    animation-play-state: paused;
+  }
+
+  /* Kinetic type — masked stagger reveal. */
+  @keyframes mask-rise {
+    from {
+      transform: translateY(110%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+  .mask-line {
+    display: inline-block;
+    overflow: hidden;
+    vertical-align: bottom;
+  }
+  .mask-rise {
+    display: inline-block;
+    transform: translateY(110%);
+    animation: mask-rise 0.7s var(--ease-press) forwards;
+    animation-delay: var(--stagger, 0ms);
+  }
+
+  /* Scroll-entry reveal — blur-resolving fade-up via IntersectionObserver. */
+  .reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    filter: blur(6px);
+    transition:
+      opacity 0.8s var(--ease-press),
+      transform 0.8s var(--ease-press),
+      filter 0.8s var(--ease-press);
+    transition-delay: var(--stagger, 0ms);
+  }
+  .reveal.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+
+  @keyframes rise-in {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .rise-in {
+    animation: rise-in 0.35s ease-out both;
+  }
+
+  /* Hero rule that draws itself in under the masthead. */
+  @keyframes draw-rule {
+    from {
+      transform: scaleX(0);
+    }
+    to {
+      transform: scaleX(1);
+    }
+  }
+  .draw-rule {
+    transform-origin: center;
+    animation: draw-rule 1.1s var(--ease-press) both;
+    animation-delay: var(--stagger, 0ms);
+  }
+
+  .link-sweep {
+    background-image: linear-gradient(currentColor, currentColor);
+    background-repeat: no-repeat;
+    background-position: 0 100%;
+    background-size: 0% 1px;
+    transition: background-size 0.5s var(--ease-press);
+  }
+  .group:hover .link-sweep,
+  .link-sweep:hover {
+    background-size: 100% 1px;
+  }
+
+  /* Leaflet renders its own chrome; force it onto the paper palette so the
+     Climate Watch map doesn't punch a white hole in the page. */
+  .leaflet-container {
+    background: var(--color-surface) !important;
+    font-family: var(--font-sans) !important;
+  }
+  .leaflet-control-attribution {
+    background: rgba(255, 253, 248, 0.85) !important;
+    color: var(--color-text-faint) !important;
+    font-size: 9px !important;
+  }
+  .leaflet-control-attribution a {
+    color: var(--color-accent) !important;
+  }
+  .leaflet-bar a {
+    background: var(--color-bg-raised) !important;
+    color: var(--color-text) !important;
+    border-color: var(--color-border) !important;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ticker-track {
+      animation: none;
+      width: 100%;
+    }
+    .ticker-track > [aria-hidden="true"] {
+      display: none;
+    }
+    .mask-rise,
+    .draw-rule {
+      animation: none;
+      transform: none;
+    }
+    .reveal {
+      opacity: 1;
+      transform: none;
+      filter: none;
+      transition: none;
+    }
+    .rise-in {
+      animation: none;
+    }
+    .link-sweep {
+      transition: none;
+    }
+  }
+}

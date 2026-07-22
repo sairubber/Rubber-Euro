@@ -47,3 +47,18 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# market-intel-v2 (Python backend + React frontend)
+market-intel-v2/backend/.venv/
+market-intel-v2/backend/__pycache__/
+market-intel-v2/backend/**/__pycache__/
+market-intel-v2/backend/*.db
+# SQLite WAL mode writes these sidecars alongside the .db — they hold real
+# committed data, so `*.db` alone is not enough to keep the database out.
+market-intel-v2/backend/*.db-shm
+market-intel-v2/backend/*.db-wal
+market-intel-v2/backend/.env
+market-intel-v2/frontend/dist/
+# Generated knowledge-graph output (rebuildable with /graphify, and its
+# cache/ subtree is large and machine-specific)
+market-intel-v2/graphify-out/

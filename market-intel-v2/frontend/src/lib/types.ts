@@ -1,0 +1,187 @@
+export type Market = "TSR20" | "EURUSD";
+export type NewsCategory = "headline" | "trade" | "disruption";
+
+export type Credibility = "verified" | "trusted" | "unrated";
+
+export interface NewsArticleRecord {
+  id: number;
+  title: string;
+  description: string;
+  url: string;
+  source_name: string;
+  market_tag: string;
+  category: NewsCategory;
+  original_language: string | null;
+  credibility: Credibility;
+  country: string | null;
+  key_points: string[];
+  image_url: string | null;
+  published_at: string;
+}
+
+export interface ClimateReading {
+  region: string;
+  country: string;
+  lat: number;
+  lon: number;
+  reading_date: string;
+  rainfall_mm: number;
+  rainfall_7d_avg_mm: number;
+  disruption_score: number;
+  source: string;
+}
+
+export type RiskLevel = "Low" | "Moderate" | "Elevated" | "High";
+
+export interface RegionSignal {
+  region: string;
+  country: string;
+  risk_level: RiskLevel;
+  composite_score: number;
+  climate_score: number;
+  news_article_count: number;
+  trend: "Worsening" | "Improving" | "Steady" | "No prior reading";
+  rationale: string;
+}
+
+export interface MarketOutlook {
+  headline: string;
+  summary: string;
+  elevated_region_count: number;
+  worsening_region_count: number;
+  total_regions: number;
+}
+
+export interface CountryBreakdownItem {
+  country: string;
+  count: number;
+}
+
+export interface TradeMoverRow {
+  country: string;
+  value_usd: number;
+  qty_kg: number;
+  prior_value_usd: number | null;
+  change_pct: number | null;
+  qty_change_pct: number | null;
+}
+
+export interface TradeMovers {
+  latest_period: string | null;
+  prior_period: string | null;
+  rows: TradeMoverRow[];
+}
+
+export interface TimelineEntry {
+  country: string;
+  value_usd: number;
+  qty_kg: number;
+}
+
+export interface TimelineFrame {
+  period: string;
+  supply: TimelineEntry[];
+  demand: TimelineEntry[];
+}
+
+export interface TradeTimeline {
+  freq: string;
+  frames: TimelineFrame[];
+  supply_countries: string[];
+  demand_countries: string[];
+}
+
+export interface BilateralFlow {
+  period: string;
+  exporter: string;
+  importer: string;
+  value_usd: number;
+  qty_kg: number;
+}
+
+export interface TradeBalance {
+  supply_period: string | null;
+  supply_prior_period: string | null;
+  demand_period: string | null;
+  demand_prior_period: string | null;
+  supply_total_usd: number;
+  demand_total_usd: number;
+  supply_change_pct: number | null;
+  demand_change_pct: number | null;
+  supply_country_count: number;
+  demand_country_count: number;
+  rising_demand: string[];
+  rising_supply: string[];
+}
+
+export interface GradePoint {
+  period: string;
+  value_usd: number;
+  qty_kg: number;
+  reporters: number;
+}
+
+export interface GradeTopProducer {
+  country: string;
+  value_usd: number;
+  qty_kg: number;
+}
+
+export interface GradeSeries {
+  hs_code: string;
+  grade: string;
+  freq: string;
+  points: GradePoint[];
+  latest_period: string;
+  latest_value_usd: number;
+  latest_qty_kg: number;
+  change_pct: number | null;
+  qty_change_pct: number | null;
+  top_producers: GradeTopProducer[];
+}
+
+export interface GradeFreshness {
+  hs_code: string;
+  grade: string;
+  latest_complete_year: string | null;
+  latest_filed_year: string | null;
+  latest_filed_year_reporters: number;
+  latest_filed_month: string | null;
+}
+
+export interface EUImportRow {
+  country: string;
+  value_eur: number;
+  qty_kg: number;
+  change_pct: number | null;
+}
+
+export interface EUMonthPoint {
+  period: string;
+  value_eur: number;
+  qty_kg: number;
+}
+
+export interface EUImports {
+  latest_period: string | null;
+  prior_period: string | null;
+  currency: string;
+  rows: EUImportRow[];
+  months: EUMonthPoint[];
+}
+
+export interface PortRecord {
+  name: string;
+  lat: number;
+  lon: number;
+}
+
+export interface StatusRecord {
+  scheduler_running: boolean;
+  markets: string[];
+  refresh_minutes: number;
+  news_api_configured: boolean;
+  last_scrape_at: string | null;
+  last_scrape_added: number;
+  last_climate_at: string | null;
+}
