@@ -17,6 +17,8 @@ subscription prompts) is scored out.
 
 import re
 
+from app.translate import detect_language
+
 # Sentence split that tolerates "U.S.", "No.", "Rs.", decimals like 1.5%
 _SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+(?=[A-Z(])")
 _WS = re.compile(r"\s+")
@@ -35,7 +37,14 @@ _BOILERPLATE = re.compile(
     r"(cookie|subscribe|newsletter|sign in|log in|advertisement|all rights reserved"
     r"|privacy policy|terms of (use|service)|follow us|share this|read more"
     r"|click here|disclaimer|risk warning|past performance|is a technical analyst"
-    r"|has more than \w+ years|contact us|©|\bcopyright\b)",
+    r"|has more than \w+ years|contact us|©|\bcopyright\b"
+    # Wire-page furniture that scored well because it is dense with tickers
+    # and numbers: bylines with timestamps, read-time counters, broker
+    # promos and trading disclosures.
+    r"|\d+\s*min read|\bdisclosure\b|the above button|trade \w+ on \b"
+    r"|\b(PDT|PST|EDT|EST|GMT|UTC)\b.*\bread\b"
+    r"|\bad hoc\b|\banzeige\b|\bwerbung\b|jetzt \w+ er[öo]ffnen|geschenkt"
+    r"|ULTIMA ORA|\bmehr »|\bsponsored\b|\bpartner content\b)",
     re.IGNORECASE,
 )
 
@@ -132,10 +141,19 @@ def extract_key_points(full_text: str, max_points: int = 4) -> list[str]:
     if not candidates:
         return []
 
-    top = sorted(candidates, key=lambda c: -c[2])[:max_points]
+    ranked = sorted(candidates, key=lambda c: -c[2])
     # A bullet is only worth showing if it cleared the bar for *why* it was
     # picked — otherwise we'd print arbitrary prose and call it analysis.
-    top = [c for c in top if c[2] >= 3.0]
+    ranked = [c for c in ranked if c[2] >= 3.0]
+
+    # English only. Title and description get translated, but bullets are
+    # pulled from the article body in its ORIGINAL language — so translated
+    # articles were printing Turkish, German, Italian and Swedish bullets
+    # under an English headline (11 of them, several pure broker ad copy).
+    # Detection is local and free, so filtering costs nothing.
+    english = [c for c in ranked if detect_language(c[1]) is None]
+
+    top = english[:max_points]
     return [sentence for _, sentence, _ in sorted(top, key=lambda c: c[0])]
 
 

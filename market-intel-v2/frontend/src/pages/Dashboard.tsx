@@ -246,14 +246,12 @@ export default function Dashboard() {
               {refreshing ? "Refreshing…" : "Refresh"}
             </button>
           </div>
-          {/* CSS multi-column, NOT grid: grid rows cannot start until the
-              tallest cell in the previous row ends, which left a gap under
-              any story shorter than its row-mate. */}
-          <div className="columns-1 xl:columns-2 xl:gap-x-10">
+          {/* Compact rows are uniform height, so a plain two-column grid
+              lines up cleanly — no need for the column-flow workaround that
+              the bullet-height variance used to require. */}
+          <div className="grid grid-cols-1 xl:grid-cols-2 xl:gap-x-10">
             {wire.map((item) => (
-              <div key={item.id} className="break-inside-avoid">
-                <FeedRow item={item} />
-              </div>
+              <FeedRow key={item.id} item={item} compact />
             ))}
           </div>
         </div>

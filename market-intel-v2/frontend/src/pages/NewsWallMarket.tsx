@@ -276,14 +276,12 @@ export default function NewsWallMarket() {
             )
           )}
           {restOfFeed.length > 0 && (
-            /* Two columns from lg up — a single 40-item list beside a 1600px
-               container left most of the page empty. Columns, not grid: grid
-               rows leave a gap under any story shorter than its row-mate. */
-            <div className="columns-1 lg:columns-2 lg:gap-x-10">
+            /* Compact rows: uniform height, so a plain two-column grid aligns
+               cleanly. The full-bullet reading of any story is one click away
+               on the publisher page; the lead above already carries bullets. */
+            <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-x-10">
               {restOfFeed.map((item) => (
-                <div key={item.id} className="break-inside-avoid">
-                  <FeedRow item={item} />
-                </div>
+                <FeedRow key={item.id} item={item} compact />
               ))}
             </div>
           )}

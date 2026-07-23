@@ -5,45 +5,62 @@ import { CredibilityBadge } from "@/components/ui/CredibilityBadge";
 import { relativeTime } from "@/lib/utils";
 import type { NewsArticleRecord } from "@/lib/types";
 
-export function FeedRow({ item }: { item: NewsArticleRecord }) {
-  // Defensive: a response missing key_points (an older cached payload, or a
-  // future endpoint that forgets the field) must degrade to the description,
-  // not throw and blank the entire page.
+/**
+ * One story row.
+ *
+ * `compact` (default off) is the scannable-index variant used in the dense
+ * Overview wire and multi-column lists: fixed-height thumbnail slot, headline,
+ * one line of context, meta. It never renders bullets — bullets have 0-4
+ * items, which made rows swing between 60px and 340px and read as unstructured
+ * both in the wire and on the market walls.
+ *
+ * The full variant (compact=false) keeps the verbatim key-point bullets, for
+ * the single-column reading view on each market wall where uneven height is
+ * expected and fine.
+ */
+export function FeedRow({ item, compact = false }: { item: NewsArticleRecord; compact?: boolean }) {
   const keyPoints = item.key_points ?? [];
   const [imageFailed, setImageFailed] = useState(false);
   const showImage = !!item.image_url && !imageFailed;
+  const isTSR = item.market_tag === "TSR20";
 
-  const hoverRule =
-    item.market_tag === "TSR20"
-      ? "hover:border-l-tsr20"
-      : item.market_tag === "EURUSD"
-        ? "hover:border-l-eurusd"
-        : "hover:border-l-accent";
-  const bulletColor = item.market_tag === "TSR20" ? "text-tsr20" : "text-eurusd";
+  const hoverRule = isTSR ? "hover:border-l-tsr20" : "hover:border-l-eurusd";
+  const bulletColor = isTSR ? "text-tsr20" : "text-eurusd";
+
+  // Uniform media slot: real thumbnail, or a market-tinted plate. Keeping the
+  // slot a fixed size regardless of whether an image exists is what makes the
+  // rows line up instead of jumping.
+  const thumb = (
+    <div className={`shrink-0 overflow-hidden border border-border ${compact ? "w-16 h-16" : "w-24 h-20"}`}>
+      {showImage ? (
+        <img
+          src={item.image_url!}
+          alt=""
+          loading="lazy"
+          onError={() => setImageFailed(true)}
+          className="w-full h-full object-cover bg-surface"
+        />
+      ) : (
+        <div className={`w-full h-full flex items-center justify-center ${isTSR ? "bg-tsr20-dim" : "bg-eurusd-dim"}`}>
+          <span className={`kicker text-[9px] font-semibold opacity-45 ${bulletColor}`}>{item.market_tag}</span>
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <a
       href={item.url}
       target="_blank"
       rel="noopener noreferrer"
-      className={`group flex items-start gap-3 py-3.5 border-b border-border-subtle last:border-0 border-l-2 border-l-transparent ${hoverRule} hover:bg-surface/40 hover:pl-3 transition-[color,background-color,border-color,padding] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]`}
+      className={`group flex items-start gap-3 py-3 border-b border-border-subtle last:border-0 border-l-2 border-l-transparent ${hoverRule} hover:bg-surface/40 hover:pl-3 transition-[color,background-color,border-color,padding] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]`}
     >
-      {/* Thumbnail — the reference layouts anchor every list row with one,
-          and it keeps rows that have no bullets from reading as bare text. */}
-      {showImage && (
-        <img
-          src={item.image_url!}
-          alt=""
-          loading="lazy"
-          onError={() => setImageFailed(true)}
-          className="w-20 h-16 sm:w-24 sm:h-20 object-cover border border-border shrink-0 bg-surface"
-        />
-      )}
+      {thumb}
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 mb-1 flex-wrap">
           <Tag tone={marketTone(item.market_tag)}>{item.market_tag}</Tag>
-          {item.source_name && <span className="kicker text-[10px] text-text-faint">{item.source_name}</span>}
+          {item.source_name && <span className="kicker text-[10px] text-text-faint truncate max-w-[140px]">{item.source_name}</span>}
           <CredibilityBadge credibility={item.credibility} />
           {item.country && (
             <span className="kicker text-[9px] text-text-faint border border-border-subtle px-1.5 py-px">{item.country}</span>
@@ -55,12 +72,16 @@ export function FeedRow({ item }: { item: NewsArticleRecord }) {
           )}
         </div>
 
-        <p className="text-[15px] text-text group-hover:text-accent transition-colors leading-snug">{item.title}</p>
+        <p className={`text-text group-hover:text-accent transition-colors leading-snug ${compact ? "text-[14px] line-clamp-2" : "text-[15px]"}`}>
+          {item.title}
+        </p>
 
-        {/* Key points are sentences lifted verbatim from the article — shown
-            instead of the one-line description when we have them, because
-            they carry the actual numbers a desk reads for. */}
-        {keyPoints.length > 0 ? (
+        {compact ? (
+          // One line of context, clamped — keeps every row the same height.
+          (keyPoints[0] || item.description) && (
+            <p className="text-xs text-text-faint leading-relaxed mt-1 line-clamp-1">{keyPoints[0] || item.description}</p>
+          )
+        ) : keyPoints.length > 0 ? (
           <ul className="mt-2 space-y-1">
             {keyPoints.map((point, i) => (
               <li key={i} className="flex gap-2 text-xs text-text-dim leading-relaxed">
