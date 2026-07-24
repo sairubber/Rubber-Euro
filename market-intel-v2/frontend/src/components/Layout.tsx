@@ -1,13 +1,15 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { cn, relativeTime } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { Ticker } from "@/components/Ticker";
+import Prices from "@/pages/Prices";
 
 const NAV_GROUPS = [
   {
     label: "News Wall",
     items: [
+      { to: "/prices", label: "Prices", end: false, active: "border-tsr20 text-tsr20" },
       { to: "/", label: "Overview", end: true, active: "border-accent text-accent" },
       { to: "/wall/tsr20", label: "TSR20 Rubber", end: false, active: "border-tsr20 text-tsr20" },
       { to: "/wall/eurusd", label: "EUR/USD", end: false, active: "border-eurusd text-eurusd" },
@@ -58,6 +60,10 @@ export default function Layout() {
     queryFn: api.getStatus,
     refetchInterval: 60_000,
   });
+  // The Prices page stays mounted permanently and is only hidden on other
+  // routes — unmounting would destroy the TradingView iframe and with it
+  // everything the user drew or configured on the chart.
+  const isPrices = useLocation().pathname === "/prices";
 
   return (
     <div className="min-h-screen bg-bg text-text flex flex-col">
@@ -141,7 +147,12 @@ export default function Layout() {
       </header>
 
       <main className="flex-1 max-w-[1600px] w-full mx-auto px-4 md:px-8 py-8 md:py-12">
-        <Outlet />
+        <div className={cn(isPrices && "hidden")}>
+          <Outlet />
+        </div>
+        <div className={cn(!isPrices && "hidden")}>
+          <Prices />
+        </div>
       </main>
 
       <footer className="border-t border-rule mt-auto">

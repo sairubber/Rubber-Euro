@@ -15,6 +15,8 @@ from app.database import SessionLocal
 from app.enrich import extract_image, fetch_meta_description, normalize_title
 from app.models import ClimateReading, NewsArticle, TradeFlow
 from app.news import fetch_market_news
+from app.prices import refresh_fx_rates, seed_quotes_if_empty
+from app.sgx import sync_sgx_quotes
 from app.analyzer import build_summary, extract_key_points
 from app.news_scraper import is_market_news, iter_niche_query_batches
 from app.rss_wire import fetch_article_page, fetch_full_text, iter_rss_batches
@@ -280,6 +282,32 @@ def run_news_scrape_job() -> None:
         logger.exception("News scrape job failed — the next scheduled pass will retry automatically")
 
 
+def run_fx_job() -> None:
+    """Live FX rates from open.er-api.com — free, no key, one request per pass."""
+    db = SessionLocal()
+    try:
+        updated = refresh_fx_rates(db)
+        logger.info("FX refresh: %d pairs updated", updated)
+    except Exception:
+        logger.exception("FX job failed")
+    finally:
+        db.close()
+
+
+def run_sgx_job() -> None:
+    """Delayed TSR20 board straight from SGX's own public endpoint — the same
+    ~10-minute-delayed numbers the exchange website shows."""
+    db = SessionLocal()
+    try:
+        updated = sync_sgx_quotes(db)
+        logger.info("SGX sync: %d contract months updated", updated)
+    except Exception:
+        logger.exception("SGX sync failed — board keeps its last values")
+        db.rollback()
+    finally:
+        db.close()
+
+
 def _check_and_run_startup_jobs() -> None:
     db = SessionLocal()
     try:
@@ -293,6 +321,16 @@ def _check_and_run_startup_jobs() -> None:
         has_trade = db.query(TradeFlow).first() is not None
     finally:
         db.close()
+
+    db = SessionLocal()
+    try:
+        seed_quotes_if_empty(db)
+    except Exception:
+        logger.exception("Futures board seed failed")
+    finally:
+        db.close()
+    threading.Thread(target=run_fx_job, daemon=True).start()
+    threading.Thread(target=run_sgx_job, daemon=True).start()
 
     if not has_news:
         logger.info("No news found on startup, running an initial scrape")
@@ -338,6 +376,27 @@ def start_scheduler() -> None:
         run_trade_job,
         IntervalTrigger(hours=12, timezone=IST),
         id="trade_job",
+        replace_existing=True,
+    )
+
+    # Poll SGX every 2 minutes — the tightest sensible cadence against a
+    # source that itself refreshes ~10-min delayed (real-time SGX is a paid
+    # exchange license; no free API anywhere carries it faster — the
+    # aggregators all redistribute this same delayed feed). The $9-move /
+    # hourly-slot board rules live in sync_sgx_quotes, not in this cadence.
+    _scheduler.add_job(
+        run_sgx_job,
+        IntervalTrigger(minutes=2, timezone=IST),
+        id="sgx_job",
+        replace_existing=True,
+    )
+
+    # Yahoo spot quotes are real-time — a 1-minute pull keeps the FX strip
+    # and EUR/USD tick history genuinely live.
+    _scheduler.add_job(
+        run_fx_job,
+        IntervalTrigger(minutes=1, timezone=IST),
+        id="fx_job",
         replace_existing=True,
     )
 

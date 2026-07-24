@@ -30,6 +30,14 @@ export function relativeTime(iso: string): string {
   return `${days}d ago`;
 }
 
+/** Split a feed into `n` column stacks that each read chronologically top to
+ * bottom. A plain multi-column grid fills row-major, which zigzags the time
+ * order across columns — fine for a mosaic, wrong for a wire. */
+export function splitColumns<T>(items: T[], n: number): T[][] {
+  const per = Math.ceil(items.length / n);
+  return Array.from({ length: n }, (_, i) => items.slice(i * per, (i + 1) * per)).filter((c) => c.length > 0);
+}
+
 export function directionColor(direction: string): string {
   const d = direction.toLowerCase();
   if (d.includes("increas")) return "text-bull";

@@ -80,6 +80,87 @@ class TradeFlow(Base):
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
 
 
+class FuturesQuote(Base):
+    """One contract-month row of the manually maintained SGX TSR20 board.
+
+    SGX does not expose a free real-time TSR20 feed, so the desk keys these
+    numbers in (same workflow as the Google Sheet this mirrors). Everything
+    derivable is derived, never stored: change = price - close (last
+    settlement), pct change = change / close, previous OI = OI - OI change.
+    """
+
+    __tablename__ = "futures_quotes"
+    __table_args__ = (UniqueConstraint("market_tag", "contract_month", name="uq_quote_contract"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    market_tag: Mapped[str] = mapped_column(String, nullable=False, index=True)  # 'TSR20'
+    contract_month: Mapped[str] = mapped_column(String, nullable=False)  # 'August'
+    month_order: Mapped[int] = mapped_column(Integer, nullable=False)  # sort key: 8, 9, 10, 11
+    price: Mapped[float] = mapped_column(Float, nullable=False)  # current market price (T)
+    open: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    high: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    low: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    volume: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)  # Vcon
+    close: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)  # closing price (L.S)
+    open_interest: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    oi_change: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
+
+
+class PriceTick(Base):
+    """Price history point. For TSR20 a tick is recorded only when the front
+    month moves >= TICK_THRESHOLD ($10) from the last stored tick — the board
+    updates on every $10 of movement, and this history is what the intraday
+    chart and the proven support/resistance detection read from. FX pairs get
+    a tick per scheduler fetch when the rate actually moved."""
+
+    __tablename__ = "price_ticks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    market_tag: Mapped[str] = mapped_column(String, nullable=False, index=True)  # 'TSR20' | 'EURUSD' | ...
+    price: Mapped[float] = mapped_column(Float, nullable=False)
+    ts: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False, index=True)
+
+
+class LevelEvent(Base):
+    """A support/resistance break the market actually made.
+
+    Written the moment an observed price crosses a computed level, together
+    with a rule-based explanation of the scenario at that time (which level,
+    how proven it was, what the standard reading of the break is, and the
+    next computed level in the direction of the move). Never model-written —
+    every sentence is assembled from the stored numbers."""
+
+    __tablename__ = "level_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    market_tag: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    level_price: Mapped[float] = mapped_column(Float, nullable=False)
+    level_label: Mapped[str] = mapped_column(String, nullable=False)
+    kind: Mapped[str] = mapped_column(String, nullable=False)  # support | resistance
+    direction: Mapped[str] = mapped_column(String, nullable=False)  # break_above | break_below
+    proven: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    strength: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    price_before: Mapped[float] = mapped_column(Float, nullable=False)
+    price_after: Mapped[float] = mapped_column(Float, nullable=False)
+    explanation: Mapped[str] = mapped_column(Text, nullable=False)
+    ts: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False, index=True)
+
+
+class FxRate(Base):
+    """Latest live FX rate per pair, fetched from the free open.er-api.com
+    endpoint (no key). One row per pair, overwritten each refresh; the
+    previous value is kept so the board can show direction."""
+
+    __tablename__ = "fx_rates"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    pair: Mapped[str] = mapped_column(String, nullable=False, unique=True)  # 'EURUSD', 'USDIDR', ...
+    rate: Mapped[float] = mapped_column(Float, nullable=False)
+    prev_rate: Mapped[float | None] = mapped_column(Float, nullable=True)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+
 class ClimateReading(Base):
     """Real rainfall data from Open-Meteo (open, no API key required) per producing region."""
 

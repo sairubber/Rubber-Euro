@@ -176,6 +176,103 @@ export interface PortRecord {
   lon: number;
 }
 
+export interface FuturesQuote {
+  market_tag: string;
+  contract_month: string;
+  month_order: number;
+  price: number;
+  change: number;
+  open: number;
+  high: number;
+  low: number;
+  volume: number;
+  close: number;
+  open_interest: number;
+  oi_change: number;
+  prev_open_interest: number;
+  price_change_pct: number;
+  updated_at: string | null;
+}
+
+export interface FxRateRecord {
+  pair: string;
+  rate: number;
+  prev_rate: number | null;
+  change_pct: number | null;
+  fetched_at: string | null;
+}
+
+export interface PriceBoard {
+  sgx_synced_at: string | null;
+  quotes: FuturesQuote[];
+  fx: FxRateRecord[];
+}
+
+export interface PriceTickRecord {
+  price: number;
+  ts: string;
+}
+
+export interface PriceCandle {
+  ts: string;
+  price: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+}
+
+export interface LevelEventRecord {
+  id: number;
+  market_tag: string;
+  level_price: number;
+  level_label: string;
+  kind: "support" | "resistance";
+  direction: "break_above" | "break_below";
+  proven: boolean;
+  strength: number;
+  price_before: number;
+  price_after: number;
+  explanation: string;
+  ts: string;
+}
+
+export interface PriceLevel {
+  price: number;
+  kind: "support" | "resistance";
+  label: string;
+  proven: boolean;
+  strength: number;
+  reason: string;
+}
+
+export interface PriceLevels {
+  market_tag: string;
+  current_price: number | null;
+  session: string;
+  levels: PriceLevel[];
+  computed_at?: string;
+}
+
+export interface FxHistoryPoint {
+  date: string;
+  rate: number;
+}
+
+export interface QuoteUpdate {
+  market_tag: string;
+  contract_month: string;
+  month_order?: number;
+  price?: number;
+  open?: number;
+  high?: number;
+  low?: number;
+  volume?: number;
+  close?: number;
+  open_interest?: number;
+  oi_change?: number;
+}
+
 export interface StatusRecord {
   scheduler_running: boolean;
   markets: string[];

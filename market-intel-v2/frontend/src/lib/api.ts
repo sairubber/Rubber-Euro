@@ -1,4 +1,4 @@
-import type { BilateralFlow, ClimateReading, CountryBreakdownItem, EUImports, GradeFreshness, GradeSeries, MarketOutlook, NewsArticleRecord, NewsCategory, PortRecord, RegionSignal, StatusRecord, TradeBalance, TradeMovers, TradeTimeline } from "./types";
+import type { BilateralFlow, ClimateReading, CountryBreakdownItem, EUImports, FuturesQuote, FxHistoryPoint, GradeFreshness, GradeSeries, LevelEventRecord, MarketOutlook, NewsArticleRecord, NewsCategory, PortRecord, PriceBoard, PriceCandle, PriceLevels, PriceTickRecord, QuoteUpdate, RegionSignal, StatusRecord, TradeBalance, TradeMovers, TradeTimeline } from "./types";
 
 export class ApiError extends Error {
   status: number;
@@ -54,6 +54,16 @@ export const api = {
   getTradeFreshness: () => request<GradeFreshness[]>("/trade/freshness"),
   getEUImports: () => request<EUImports>("/trade/eu-imports"),
   refreshTrade: () => request<{ message: string }>("/trade/refresh", { method: "POST" }),
+
+  getPriceBoard: () => request<PriceBoard>("/prices/board"),
+  putQuote: (payload: QuoteUpdate) => request<FuturesQuote>("/prices/quote", { method: "PUT", body: JSON.stringify(payload) }),
+  getTicks: (market: string, hours = 168) => request<PriceTickRecord[]>(`/prices/ticks/${market}?hours=${hours}`),
+  getLevels: (market: string) => request<PriceLevels>(`/prices/levels/${market}`),
+  getEurusdHistory: (days = 90) => request<FxHistoryPoint[]>(`/prices/eurusd-history?days=${days}`),
+  refreshSgx: () => request<{ message: string }>("/prices/refresh-sgx", { method: "POST" }),
+  getFxIntraday: (pair: string) => request<PriceCandle[]>(`/prices/fx-intraday/${pair}`),
+  getLevelEvents: (market: string, limit = 30) => request<LevelEventRecord[]>(`/prices/level-events/${market}?limit=${limit}`),
+  getTsr20History: (days = 90) => request<PriceTickRecord[]>(`/prices/tsr20-history?days=${days}`),
 
   getStatus: () => request<StatusRecord>("/status"),
   getPorts: () => request<PortRecord[]>("/ports"),

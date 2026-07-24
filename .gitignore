@@ -62,3 +62,6 @@ market-intel-v2/frontend/dist/
 # Generated knowledge-graph output (rebuildable with /graphify, and its
 # cache/ subtree is large and machine-specific)
 market-intel-v2/graphify-out/
+
+# stray SQLite files from a mislaunched backend (canonical DB lives in market-intel-v2/backend/)
+market_intel.db*

@@ -13,6 +13,10 @@ export default function App() {
     <Routes>
       <Route element={<Layout />}>
         <Route path="/" element={<Dashboard />} />
+        {/* /prices renders nothing here — Layout keeps the Prices page
+            permanently mounted so the TradingView iframe (and whatever the
+            user drew on it) survives navigating away and back. */}
+        <Route path="/prices" element={null} />
         <Route path="/wall/:market" element={<NewsWallMarket />} />
         <Route path="/history" element={<Archive />} />
         <Route path="/ports" element={<PortTraffic />} />

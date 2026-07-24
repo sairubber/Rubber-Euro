@@ -10,7 +10,7 @@ import { CategoriesPanel, SupplyRiskPanel, TrendingCountriesPanel } from "@/comp
 import { FeedRow } from "@/components/FeedRow";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FeedSkeleton, LeadSkeleton } from "@/components/ui/Skeleton";
-import { cn, formatIST } from "@/lib/utils";
+import { cn, formatIST, splitColumns } from "@/lib/utils";
 import type { NewsArticleRecord } from "@/lib/types";
 
 function fmtUSD(v: number): string {
@@ -246,12 +246,15 @@ export default function Dashboard() {
               {refreshing ? "Refreshing…" : "Refresh"}
             </button>
           </div>
-          {/* Compact rows are uniform height, so a plain two-column grid
-              lines up cleanly — no need for the column-flow workaround that
-              the bullet-height variance used to require. */}
-          <div className="grid grid-cols-1 xl:grid-cols-2 xl:gap-x-10">
-            {wire.map((item) => (
-              <FeedRow key={item.id} item={item} compact />
+          {/* Each column is its own chronological stack — a row-major grid
+              would zigzag the time order left-right across the columns. */}
+          <div className="grid grid-cols-1 xl:grid-cols-2 xl:gap-x-10 items-start">
+            {splitColumns(wire, 2).map((col, i) => (
+              <div key={i}>
+                {col.map((item) => (
+                  <FeedRow key={item.id} item={item} compact />
+                ))}
+              </div>
             ))}
           </div>
         </div>

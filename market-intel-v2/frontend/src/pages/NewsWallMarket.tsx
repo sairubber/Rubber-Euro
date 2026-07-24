@@ -10,7 +10,7 @@ import { FeedRow } from "@/components/FeedRow";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FeedSkeleton, LeadSkeleton } from "@/components/ui/Skeleton";
 import { marketTone, Tag } from "@/components/ui/Badge";
-import { cn, relativeTime, formatIST } from "@/lib/utils";
+import { cn, relativeTime, formatIST, splitColumns } from "@/lib/utils";
 import type { NewsArticleRecord, NewsCategory } from "@/lib/types";
 
 const CATEGORIES: { value: NewsCategory | undefined; label: string }[] = [
@@ -276,12 +276,15 @@ export default function NewsWallMarket() {
             )
           )}
           {restOfFeed.length > 0 && (
-            /* Compact rows: uniform height, so a plain two-column grid aligns
-               cleanly. The full-bullet reading of any story is one click away
-               on the publisher page; the lead above already carries bullets. */
-            <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-x-10">
-              {restOfFeed.map((item) => (
-                <FeedRow key={item.id} item={item} compact />
+            /* Each column reads chronologically top to bottom — a row-major
+               grid would zigzag the time order left-right across columns. */
+            <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-x-10 items-start">
+              {splitColumns(restOfFeed, 2).map((col, i) => (
+                <div key={i}>
+                  {col.map((item) => (
+                    <FeedRow key={item.id} item={item} compact />
+                  ))}
+                </div>
               ))}
             </div>
           )}

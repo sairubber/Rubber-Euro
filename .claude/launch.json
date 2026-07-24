@@ -6,6 +6,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "--prefix", "market-intel-v2/frontend"],
       "port": 5173
+    },
+    {
+      "name": "market-intel-v2-backend",
+      "runtimeExecutable": "market-intel-v2/backend/.venv/Scripts/python.exe",
+      "runtimeArgs": ["-m", "uvicorn", "app.main:app", "--port", "8020", "--app-dir", "market-intel-v2/backend"],
+      "port": 8020
     }
   ]
 }
