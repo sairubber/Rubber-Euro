@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { cn, relativeTime } from "@/lib/utils";
+import { cn, newsImageFallback, relativeTime } from "@/lib/utils";
 import type { NewsArticleRecord } from "@/lib/types";
 
 /** Image-backed story tile: photo fills the card, headline and category sit
@@ -16,8 +16,9 @@ export function MosaicCard({
   item: NewsArticleRecord;
   size?: "large" | "wide" | "small";
 }) {
-  const [imageFailed, setImageFailed] = useState(false);
-  const showImage = !!item.image_url && !imageFailed;
+  const sources = [...(item.image_url ? [item.image_url] : []), newsImageFallback(item.title, 640, 480)];
+  const [srcIdx, setSrcIdx] = useState(0);
+  const showImage = srcIdx < sources.length;
   const isTSR = item.market_tag === "TSR20";
 
   return (
@@ -29,10 +30,10 @@ export function MosaicCard({
     >
       {showImage ? (
         <img
-          src={item.image_url!}
+          src={sources[srcIdx]}
           alt=""
           loading="lazy"
-          onError={() => setImageFailed(true)}
+          onError={() => setSrcIdx((i) => i + 1)}
           className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:scale-105"
         />
       ) : (

@@ -74,11 +74,11 @@ def get_ticks(market_tag: str, hours: int = 168, db: Session = Depends(get_db)):
 
 
 @router.get("/prices/levels/{market_tag}")
-def get_levels(market_tag: str, db: Session = Depends(get_db)):
+def get_levels(market_tag: str, tf: str = "15m", db: Session = Depends(get_db)):
     tag = market_tag.upper()
     if tag not in ("TSR20", "EURUSD"):
         raise HTTPException(status_code=404, detail="Unknown market")
-    return compute_levels(db, tag)
+    return compute_levels(db, tag, tf=tf)
 
 
 @router.get("/prices/level-events/{market_tag}")

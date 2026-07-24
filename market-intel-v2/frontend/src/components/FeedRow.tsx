@@ -20,8 +20,15 @@ import type { NewsArticleRecord } from "@/lib/types";
  */
 export function FeedRow({ item, compact = false }: { item: NewsArticleRecord; compact?: boolean }) {
   const keyPoints = item.key_points ?? [];
-  const [imageFailed, setImageFailed] = useState(false);
-  const showImage = !!item.image_url && !imageFailed;
+  // Image chain: the article's own og:image first; if the article has none
+  // (or it 404s), a web image-search thumbnail for the headline; the tinted
+  // market plate only when both fail.
+  const sources = [
+    ...(item.image_url ? [item.image_url] : []),
+    `https://tse2.mm.bing.net/th?q=${encodeURIComponent(item.title)}&w=320&h=240&c=7&rs=1&p=0`,
+  ];
+  const [srcIdx, setSrcIdx] = useState(0);
+  const showImage = srcIdx < sources.length;
   const isTSR = item.market_tag === "TSR20";
 
   const hoverRule = isTSR ? "hover:border-l-tsr20" : "hover:border-l-eurusd";
@@ -34,10 +41,10 @@ export function FeedRow({ item, compact = false }: { item: NewsArticleRecord; co
     <div className={`shrink-0 overflow-hidden border border-border ${compact ? "w-16 h-16" : "w-24 h-20"}`}>
       {showImage ? (
         <img
-          src={item.image_url!}
+          src={sources[srcIdx]}
           alt=""
           loading="lazy"
-          onError={() => setImageFailed(true)}
+          onError={() => setSrcIdx((i) => i + 1)}
           className="w-full h-full object-cover bg-surface"
         />
       ) : (

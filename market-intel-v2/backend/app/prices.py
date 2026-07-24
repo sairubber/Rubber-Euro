@@ -335,25 +335,91 @@ def get_eurusd_prev_day_ohlc() -> tuple[float, float, float] | None:
     return (h, l, c)
 
 
+# Trader-language readings per pivot rank — what the level means in the
+# market, not how it is computed.
+PIVOT_READINGS = {
+    "Pivot (P)": "The session's balance point — trading above it keeps intraday control with buyers; trading below it hands the wheel to sellers.",
+    "R1 pivot": "First ceiling above the pivot — intraday rallies usually pause or stall here before attempting anything bigger.",
+    "S1 pivot": "First floor below the pivot — dips typically meet their first real buying here.",
+    "R2 pivot": "The edge of a normal session's range — price up here means an unusually strong day, and momentum often cools.",
+    "S2 pivot": "The downside edge of a normal session's range — reaching it marks heavy selling, and bounces often start here.",
+    "R3 pivot": "Extension level — only strongly trending sessions get here; watch for exhaustion or a fresh acceleration.",
+    "S3 pivot": "Downside extension — only heavy one-way selling reaches it; capitulation bounces are common here.",
+    "R4 pivot": "Outer extension — rare territory hit in runaway rallies; reversal risk is at its highest.",
+    "S4 pivot": "Outer downside extension — panic-move territory; sharp snap-backs often begin here.",
+    "R5 pivot": "Extreme extension — almost never traded; a session here is a full-blown event.",
+    "S5 pivot": "Extreme downside extension — crash-day territory.",
+}
+
+
 def traditional_pivots(h: float, l: float, c: float) -> list[tuple[float, str, str]]:
-    """TradingView's 'Pivots Traditional' formulas, verified against the
-    chart's own plotted values: P=(H+L+C)/3, R1=2P−L, S1=2P−H, R2=P+(H−L),
-    S2=P−(H−L), R3=H+2(P−L), S3=L−2(H−P), R4=3P+H−3L, S4=3P−3H+L,
-    R5=4P+H−4L, S5=4P−4H+L."""
+    """TradingView's 'Pivots Traditional' level set, verified against the
+    chart's own plotted values. Readings, not formulas, go to the UI."""
     p = (h + l + c) / 3
-    return [
-        (p, "Pivot (P)", "(H+L+C)/3 of the previous session — the day's balance point."),
-        (2 * p - l, "R1 pivot", "2P−L: first ceiling above the daily pivot."),
-        (2 * p - h, "S1 pivot", "2P−H: first floor below the daily pivot."),
-        (p + (h - l), "R2 pivot", "P+(H−L): full prior-session range above the pivot."),
-        (p - (h - l), "S2 pivot", "P−(H−L): full prior-session range below the pivot."),
-        (h + 2 * (p - l), "R3 pivot", "H+2(P−L): extension resistance."),
-        (l - 2 * (h - p), "S3 pivot", "L−2(H−P): extension support."),
-        (3 * p + h - 3 * l, "R4 pivot", "3P+H−3L: outer extension resistance."),
-        (3 * p - 3 * h + l, "S4 pivot", "3P−3H+L: outer extension support."),
-        (4 * p + h - 4 * l, "R5 pivot", "4P+H−4L: extreme extension resistance."),
-        (4 * p - 4 * h + l, "S5 pivot", "4P−4H+L: extreme extension support."),
+    prices = [
+        (p, "Pivot (P)"),
+        (2 * p - l, "R1 pivot"),
+        (2 * p - h, "S1 pivot"),
+        (p + (h - l), "R2 pivot"),
+        (p - (h - l), "S2 pivot"),
+        (h + 2 * (p - l), "R3 pivot"),
+        (l - 2 * (h - p), "S3 pivot"),
+        (3 * p + h - 3 * l, "R4 pivot"),
+        (3 * p - 3 * h + l, "S4 pivot"),
+        (4 * p + h - 4 * l, "R5 pivot"),
+        (4 * p - 4 * h + l, "S5 pivot"),
     ]
+    return [(price, name, PIVOT_READINGS[name]) for price, name in prices]
+
+
+# TradingView's scanner exposes its own computed pivot values — the exact
+# numbers the chart's "Pivots Traditional (Auto)" study draws at each chart
+# timeframe. P/R1/R2/S1/S2 come straight from the scanner; the outer levels
+# are reconstructed from the same session H/L (recovered from P/R1/S1), so
+# every level matches the chart.
+TV_TF_SUFFIX = {"15m": "|15", "1h": "|60", "4h": "|240", "1d": "", "1w": "|1W", "1mo": "|1M"}
+_tv_pivots_cache: dict[str, tuple[float, list[tuple[float, str, str]]]] = {}
+
+
+def get_tv_pivots(tf: str = "15m") -> list[tuple[float, str, str]]:
+    suffix = TV_TF_SUFFIX.get(tf)
+    if suffix is None:
+        return []
+    cached_at, cached = _tv_pivots_cache.get(tf, (0.0, []))
+    if cached and time.time() - cached_at < 300:
+        return cached
+    try:
+        cols = [f"Pivot.M.Classic.{n}{suffix}" for n in ("Middle", "R1", "S1", "R2", "S2")]
+        resp = httpx.post(
+            "https://scanner.tradingview.com/forex/scan",
+            json={"symbols": {"tickers": ["FX:EURUSD"]}, "columns": cols},
+            headers={**YAHOO_HEADERS, "Content-Type": "application/json"},
+            timeout=15,
+        )
+        resp.raise_for_status()
+        p, r1, s1, r2, s2 = resp.json()["data"][0]["d"]
+        if None in (p, r1, s1):
+            return cached
+        h, l = 2 * p - s1, 2 * p - r1  # recover the pivot session's range
+        prices = [
+            (p, "Pivot (P)"),
+            (r1, "R1 pivot"),
+            (s1, "S1 pivot"),
+            (r2 if r2 is not None else p + (h - l), "R2 pivot"),
+            (s2 if s2 is not None else p - (h - l), "S2 pivot"),
+            (h + 2 * (p - l), "R3 pivot"),
+            (l - 2 * (h - p), "S3 pivot"),
+            (3 * p + h - 3 * l, "R4 pivot"),
+            (3 * p - 3 * h + l, "S4 pivot"),
+            (4 * p + h - 4 * l, "R5 pivot"),
+            (4 * p - 4 * h + l, "S5 pivot"),
+        ]
+        out = [(price, name, PIVOT_READINGS[name]) for price, name in prices]
+        _tv_pivots_cache[tf] = (time.time(), out)
+        return out
+    except Exception:
+        logger.warning("TradingView pivot fetch failed for tf=%s", tf)
+        return cached
 
 
 _eurusd_history_cache: tuple[float, list[dict]] = (0.0, [])
@@ -436,7 +502,7 @@ def _proven_levels(db: Session, market_tag: str, current: float) -> list[dict]:
     return out
 
 
-def compute_levels(db: Session, market_tag: str) -> dict:
+def compute_levels(db: Session, market_tag: str, tf: str = "15m") -> dict:
     """Pivots + session extremes + proven reversals + round numbers, each
     carrying the reason it qualifies. Pure arithmetic over stored data."""
     levels: list[dict] = []
@@ -460,11 +526,11 @@ def compute_levels(db: Session, market_tag: str) -> dict:
             r1, s1 = 2 * p - l, 2 * p - h
             r2, s2 = p + (h - l), p - (h - l)
             for price, name, kind, why in (
-                (p, "Pivot (P)", "support" if p <= current else "resistance", "Classic floor pivot (H+L+C)/3 of the front-month session — the session's volume-weighted balance point."),
-                (r1, "R1 pivot", "resistance", "First pivot resistance 2P−L: where a move that cleared the pivot typically stalls first."),
-                (s1, "S1 pivot", "support", "First pivot support 2P−H: where a dip below the pivot typically finds buyers first."),
-                (r2, "R2 pivot", "resistance", "Second pivot resistance P+(H−L): full session-range extension above the pivot."),
-                (s2, "S2 pivot", "support", "Second pivot support P−(H−L): full session-range extension below the pivot."),
+                (p, "Pivot (P)", "support" if p <= current else "resistance", PIVOT_READINGS["Pivot (P)"]),
+                (r1, "R1 pivot", "resistance", PIVOT_READINGS["R1 pivot"]),
+                (s1, "S1 pivot", "support", PIVOT_READINGS["S1 pivot"]),
+                (r2, "R2 pivot", "resistance", PIVOT_READINGS["R2 pivot"]),
+                (s2, "S2 pivot", "support", PIVOT_READINGS["S2 pivot"]),
             ):
                 levels.append({"price": round(price, 2), "kind": kind, "label": name, "proven": False, "strength": 1, "reason": why})
         if h:
@@ -486,28 +552,31 @@ def compute_levels(db: Session, market_tag: str) -> dict:
             current = history[-1]["rate"]
         if current is None:
             return {"market_tag": market_tag, "current_price": None, "levels": [], "session": ""}
-        session_label = "spot · Traditional daily pivots (prev session) + 90d swings"
+        session_label = f"spot · TradingView pivots ({tf} chart) + 90d swings"
 
-        # Intraday layer: the same Traditional daily pivots TradingView plots
-        # on the chart, computed from the previous session's H/L/C. They
-        # recompute every session, and each level re-sides live (support ↔
-        # resistance) as the market crosses it — break detection watches
-        # these exactly like every other level.
-        prev = get_eurusd_prev_day_ohlc()
-        if prev:
-            ph, pl, pc = prev
-            for price, name, why in traditional_pivots(ph, pl, pc):
-                kind = "support" if price <= current else "resistance"
-                levels.append(
-                    {
-                        "price": round(price, 5),
-                        "kind": kind,
-                        "label": name,
-                        "proven": False,
-                        "strength": 1,
-                        "reason": f"Traditional daily pivot — {why} From yesterday's session H {ph:.5f} / L {pl:.5f} / C {pc:.5f}; same formula TradingView's pivot study draws.",
-                    }
-                )
+        # Intraday layer: the exact levels TradingView's pivot study draws at
+        # the chosen chart timeframe — pulled from TradingView's own engine,
+        # falling back to computing them from the previous session if the
+        # scanner is unreachable. Each level re-sides live (support ↔
+        # resistance) as the market crosses it, and break detection watches
+        # them like every other level.
+        pivots = get_tv_pivots(tf)
+        if not pivots:
+            prev = get_eurusd_prev_day_ohlc()
+            if prev:
+                pivots = traditional_pivots(*prev)
+        for price, name, why in pivots:
+            kind = "support" if price <= current else "resistance"
+            levels.append(
+                {
+                    "price": round(price, 5),
+                    "kind": kind,
+                    "label": name,
+                    "proven": False,
+                    "strength": 1,
+                    "reason": why,
+                }
+            )
 
         closes = [pt["rate"] for pt in history]
         if len(closes) >= 7:

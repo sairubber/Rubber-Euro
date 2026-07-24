@@ -62,7 +62,7 @@ export const api = {
   getPriceBoard: () => request<PriceBoard>("/prices/board"),
   putQuote: (payload: QuoteUpdate) => request<FuturesQuote>("/prices/quote", { method: "PUT", body: JSON.stringify(payload) }),
   getTicks: (market: string, hours = 168) => request<PriceTickRecord[]>(`/prices/ticks/${market}?hours=${hours}`),
-  getLevels: (market: string) => request<PriceLevels>(`/prices/levels/${market}`),
+  getLevels: (market: string, tf?: string) => request<PriceLevels>(`/prices/levels/${market}${tf ? `?tf=${tf}` : ""}`),
   getEurusdHistory: (days = 90) => request<FxHistoryPoint[]>(`/prices/eurusd-history?days=${days}`),
   refreshSgx: () => request<{ message: string }>("/prices/refresh-sgx", { method: "POST" }),
   getFxIntraday: (pair: string) => request<PriceCandle[]>(`/prices/fx-intraday/${pair}`),

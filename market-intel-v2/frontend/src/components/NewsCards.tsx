@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { cn, relativeTime, formatIST } from "@/lib/utils";
+import { cn, newsImageFallback, relativeTime, formatIST } from "@/lib/utils";
 import type { NewsArticleRecord } from "@/lib/types";
 
 /** Card vocabulary for the front page.
@@ -44,18 +44,19 @@ function Media({
   className?: string;
   children?: React.ReactNode;
 }) {
-  const [failed, setFailed] = useState(false);
-  const show = !!item.image_url && !failed;
+  const sources = [...(item.image_url ? [item.image_url] : []), newsImageFallback(item.title)];
+  const [srcIdx, setSrcIdx] = useState(0);
+  const show = srcIdx < sources.length;
   const isTSR = item.market_tag === "TSR20";
 
   return (
     <div className={cn("relative overflow-hidden bg-surface shrink-0", className)}>
       {show ? (
         <img
-          src={item.image_url!}
+          src={sources[srcIdx]}
           alt=""
           loading="lazy"
-          onError={() => setFailed(true)}
+          onError={() => setSrcIdx((i) => i + 1)}
           className="w-full h-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:scale-105"
         />
       ) : (

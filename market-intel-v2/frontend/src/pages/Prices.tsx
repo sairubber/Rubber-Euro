@@ -88,13 +88,44 @@ function LevelRow({ level, decimals }: { level: PriceLevel; decimals: number }) 
   );
 }
 
+// Chart timeframes whose pivot sets TradingView's engine serves — the panel
+// mirrors whichever timeframe the user reads the chart at.
+const PIVOT_TFS = ["15m", "1h", "4h", "1d", "1w", "1mo"];
+
 function LevelsPanel({ market, decimals }: { market: string; decimals: number }) {
-  const { data } = useQuery({ queryKey: ["levels", market], queryFn: () => api.getLevels(market), refetchInterval: 60_000 });
+  const isFx = market === "EURUSD";
+  const [tf, setTf] = useState<string>(() => localStorage.getItem("eurusd-pivot-tf") ?? "15m");
+  const pickTf = (v: string) => {
+    setTf(v);
+    localStorage.setItem("eurusd-pivot-tf", v);
+  };
+  const { data } = useQuery({
+    queryKey: ["levels", market, isFx ? tf : ""],
+    queryFn: () => api.getLevels(market, isFx ? tf : undefined),
+    refetchInterval: 30_000,
+  });
   if (!data) return <FeedSkeleton rows={3} />;
   const supports = data.levels.filter((l) => l.kind === "support");
   const resistances = data.levels.filter((l) => l.kind === "resistance");
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
+      {isFx && (
+        <div className="sm:col-span-2 flex items-center gap-1 mb-2 flex-wrap">
+          <span className="kicker text-[9px] text-text-faint mr-1">Pivot timeframe (match the chart):</span>
+          {PIVOT_TFS.map((v) => (
+            <button
+              key={v}
+              onClick={() => pickTf(v)}
+              className={cn(
+                "kicker text-[10px] px-2 py-0.5 border transition-colors uppercase",
+                tf === v ? "border-eurusd text-eurusd bg-eurusd-dim" : "border-border-subtle text-text-faint hover:text-text"
+              )}
+            >
+              {v}
+            </button>
+          ))}
+        </div>
+      )}
       <div>
         <p className="kicker text-[10px] text-bear mb-1">Resistance · above {data.current_price?.toFixed(decimals)}</p>
         {resistances.length === 0 && <p className="text-[11px] text-text-faint py-2">None computed yet.</p>}

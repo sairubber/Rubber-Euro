@@ -38,6 +38,12 @@ export function splitColumns<T>(items: T[], n: number): T[][] {
   return Array.from({ length: n }, (_, i) => items.slice(i * per, (i + 1) * per)).filter((c) => c.length > 0);
 }
 
+/** Web image-search thumbnail for a headline — the stand-in when an article
+ * carries no og:image of its own. */
+export function newsImageFallback(title: string, w = 400, h = 300): string {
+  return `https://tse2.mm.bing.net/th?q=${encodeURIComponent(title)}&w=${w}&h=${h}&c=7&rs=1&p=0`;
+}
+
 export function directionColor(direction: string): string {
   const d = direction.toLowerCase();
   if (d.includes("increas")) return "text-bull";
