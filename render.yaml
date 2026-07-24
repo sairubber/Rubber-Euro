@@ -1,17 +1,23 @@
-# Render Blueprint — backend API for the Rubber-Euro site.
-# The backend cannot run on Vercel: it needs an always-on process (the 24/7
-# scraper/scheduler) and a writable SQLite file, neither of which serverless
-# provides. Import this repo at https://dashboard.render.com → New → Blueprint.
+# Render Blueprint — deploys the WHOLE site (backend API + frontend) in one
+# shot. Import at https://dashboard.render.com → New → Blueprint → this repo.
+#
+# Why not Vercel for everything: the backend needs an always-on process (the
+# 24/7 scraper/scheduler) and a writable SQLite file — serverless platforms
+# provide neither. Render runs it as a real server; the frontend deploys
+# alongside it as a static site.
 #
 # Free plan notes:
-# - The service sleeps after ~15 min without traffic and wakes on the next
-#   visit (first request after a sleep takes ~30-60s). While asleep, the
-#   scraper pauses; it resumes on wake and the app rebuilds any missing data
-#   itself (news/climate/trade all re-fetch automatically).
-# - No persistent disk on free: the SQLite file resets on each deploy, and
-#   the startup jobs repopulate it. Upgrade to the paid plan and attach a
-#   disk (mount /var/data, set DATABASE_URL=sqlite:////var/data/market_intel.db)
-#   for an archive that survives deploys, plus always-on scraping.
+# - The backend sleeps after ~15 min without traffic and wakes on the next
+#   visit (first request after a sleep takes ~30-60s). While asleep the
+#   scraper pauses; on wake the app re-fetches everything itself.
+# - No persistent disk on free: the SQLite file resets on each deploy and
+#   the startup jobs repopulate it. The paid plan (+ a disk mounted at
+#   /var/data with DATABASE_URL=sqlite:////var/data/market_intel.db) keeps
+#   the archive across deploys and scrapes truly 24/7.
+#
+# If Render assigns different URLs than the ones below (it suffixes names
+# that are taken), update VITE_API_URL and CORS_ORIGINS in each service's
+# Environment tab and redeploy.
 services:
   - type: web
     name: rubber-euro-backend
@@ -25,4 +31,18 @@ services:
       - key: PYTHON_VERSION
         value: "3.11.9"
       - key: CORS_ORIGINS
-        sync: false # set in the dashboard to your Vercel URL, e.g. https://rubber-euro.vercel.app
+        value: https://rubber-euro-site.onrender.com
+
+  - type: web
+    name: rubber-euro-site
+    runtime: static
+    rootDir: market-intel-v2/frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://rubber-euro-backend.onrender.com
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
