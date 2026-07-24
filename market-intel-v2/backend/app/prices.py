@@ -11,6 +11,7 @@ has demonstrably reversed at ("proven"), each with the reason attached.
 from __future__ import annotations
 
 import logging
+import re
 import time
 from datetime import datetime, timedelta, timezone
 
@@ -149,6 +150,37 @@ YAHOO_SYMBOLS = {
 }
 
 
+# Google Finance quote pages (no official API — the rate sits in the page's
+# embedded AF_initDataCallback JSON as `"EUR / USD",N,null,[<last>,...]`).
+GOOGLE_FX_SLUGS = {
+    "EURUSD": ("EUR-USD", "EUR / USD"),
+    "GBPUSD": ("GBP-USD", "GBP / USD"),
+    "CNYUSD": ("CNY-USD", "CNY / USD"),
+    "USDIDR": ("USD-IDR", "USD / IDR"),
+    "USDCFA": ("USD-XOF", "USD / XOF"),
+}
+
+
+def _google_fx_rate(pair: str) -> float | None:
+    slug_label = GOOGLE_FX_SLUGS.get(pair)
+    if slug_label is None:
+        return None
+    slug, label = slug_label
+    try:
+        resp = httpx.get(
+            f"https://www.google.com/finance/quote/{slug}",
+            headers=YAHOO_HEADERS,
+            timeout=15,
+            follow_redirects=True,
+        )
+        resp.raise_for_status()
+        m = re.search(rf'"{re.escape(label)}",\d+,null,\[([\d.]+),', resp.text)
+        return float(m.group(1)) if m else None
+    except Exception:
+        logger.warning("Google Finance fetch failed for %s", pair)
+        return None
+
+
 def _yahoo_chart(symbol: str, range_: str = "1d", interval: str = "5m") -> dict | None:
     try:
         resp = httpx.get(
@@ -187,14 +219,17 @@ def _fx_rates_fallback() -> dict[str, float | None]:
 
 
 def refresh_fx_rates(db: Session) -> int:
-    """Live spot rates from Yahoo Finance's public chart API — the same
-    real-time quotes finance.yahoo.com shows, one cheap request per pair.
-    EURUSD also lands in the tick history when it moved enough."""
+    """Live spot rates, Google Finance first (the same numbers the Google
+    quote page shows), Yahoo's chart API as fallback per pair, er-api as the
+    last resort. EURUSD also lands in the tick history when it moved."""
     computed: dict[str, float | None] = {}
     for pair, symbol in YAHOO_SYMBOLS.items():
-        chart = _yahoo_chart(symbol, range_="1d", interval="5m")
-        price = (chart or {}).get("meta", {}).get("regularMarketPrice")
-        computed[pair] = float(price) if price else None
+        rate = _google_fx_rate(pair)
+        if rate is None:
+            chart = _yahoo_chart(symbol, range_="1d", interval="5m")
+            price = (chart or {}).get("meta", {}).get("regularMarketPrice")
+            rate = float(price) if price else None
+        computed[pair] = rate
 
     if all(v is None for v in computed.values()):
         try:

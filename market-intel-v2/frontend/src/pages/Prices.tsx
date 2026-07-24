@@ -587,8 +587,8 @@ export default function Prices() {
         </div>
       </div>
 
-      {/* FX strip lives with the board — real-time Yahoo spot, 1-min server
-          pull, 15s page refresh. */}
+      {/* FX strip lives with the board — real-time Google Finance spot
+          (Yahoo fallback), 1-min server pull, 15s page refresh. */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-px bg-border border border-border">
         {fx.map((r) => {
           const up = (r.change_pct ?? 0) > 0;
