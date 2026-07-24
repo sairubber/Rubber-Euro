@@ -1,0 +1,28 @@
+# Render Blueprint — backend API for the Rubber-Euro site.
+# The backend cannot run on Vercel: it needs an always-on process (the 24/7
+# scraper/scheduler) and a writable SQLite file, neither of which serverless
+# provides. Import this repo at https://dashboard.render.com → New → Blueprint.
+#
+# Free plan notes:
+# - The service sleeps after ~15 min without traffic and wakes on the next
+#   visit (first request after a sleep takes ~30-60s). While asleep, the
+#   scraper pauses; it resumes on wake and the app rebuilds any missing data
+#   itself (news/climate/trade all re-fetch automatically).
+# - No persistent disk on free: the SQLite file resets on each deploy, and
+#   the startup jobs repopulate it. Upgrade to the paid plan and attach a
+#   disk (mount /var/data, set DATABASE_URL=sqlite:////var/data/market_intel.db)
+#   for an archive that survives deploys, plus always-on scraping.
+services:
+  - type: web
+    name: rubber-euro-backend
+    runtime: python
+    plan: free
+    rootDir: market-intel-v2/backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: CORS_ORIGINS
+        sync: false # set in the dashboard to your Vercel URL, e.g. https://rubber-euro.vercel.app
