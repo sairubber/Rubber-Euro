@@ -300,6 +300,62 @@ def get_fx_intraday(pair: str) -> list[dict]:
     return series
 
 
+_eurusd_prev_ohlc_cache: tuple[float, tuple[float, float, float] | None] = (0.0, None)
+
+
+def get_eurusd_prev_day_ohlc() -> tuple[float, float, float] | None:
+    """Previous completed session's H/L/C for EUR/USD from Yahoo's daily
+    candles — the inputs for the Traditional daily pivots (the same study
+    TradingView plots on the chart). Cached 10 minutes; it only changes once
+    per session."""
+    global _eurusd_prev_ohlc_cache
+    cached_at, cached = _eurusd_prev_ohlc_cache
+    if cached and time.time() - cached_at < 600:
+        return cached
+    chart = _yahoo_chart("EURUSD=X", range_="5d", interval="1d")
+    if chart is None:
+        return cached
+    stamps = chart.get("timestamp") or []
+    quote = (chart.get("indicators", {}).get("quote") or [{}])[0]
+    today = datetime.now(timezone.utc).date()
+    rows = []
+    for i, ts in enumerate(stamps):
+        h = (quote.get("high") or [None] * len(stamps))[i]
+        l = (quote.get("low") or [None] * len(stamps))[i]
+        c = (quote.get("close") or [None] * len(stamps))[i]
+        if None in (h, l, c):
+            continue
+        day = datetime.fromtimestamp(ts, tz=timezone.utc).date()
+        rows.append((day, float(h), float(l), float(c)))
+    completed = [r for r in rows if r[0] < today]
+    if not completed:
+        return cached
+    _, h, l, c = completed[-1]
+    _eurusd_prev_ohlc_cache = (time.time(), (h, l, c))
+    return (h, l, c)
+
+
+def traditional_pivots(h: float, l: float, c: float) -> list[tuple[float, str, str]]:
+    """TradingView's 'Pivots Traditional' formulas, verified against the
+    chart's own plotted values: P=(H+L+C)/3, R1=2P−L, S1=2P−H, R2=P+(H−L),
+    S2=P−(H−L), R3=H+2(P−L), S3=L−2(H−P), R4=3P+H−3L, S4=3P−3H+L,
+    R5=4P+H−4L, S5=4P−4H+L."""
+    p = (h + l + c) / 3
+    return [
+        (p, "Pivot (P)", "(H+L+C)/3 of the previous session — the day's balance point."),
+        (2 * p - l, "R1 pivot", "2P−L: first ceiling above the daily pivot."),
+        (2 * p - h, "S1 pivot", "2P−H: first floor below the daily pivot."),
+        (p + (h - l), "R2 pivot", "P+(H−L): full prior-session range above the pivot."),
+        (p - (h - l), "S2 pivot", "P−(H−L): full prior-session range below the pivot."),
+        (h + 2 * (p - l), "R3 pivot", "H+2(P−L): extension resistance."),
+        (l - 2 * (h - p), "S3 pivot", "L−2(H−P): extension support."),
+        (3 * p + h - 3 * l, "R4 pivot", "3P+H−3L: outer extension resistance."),
+        (3 * p - 3 * h + l, "S4 pivot", "3P−3H+L: outer extension support."),
+        (4 * p + h - 4 * l, "R5 pivot", "4P+H−4L: extreme extension resistance."),
+        (4 * p - 4 * h + l, "S5 pivot", "4P−4H+L: extreme extension support."),
+    ]
+
+
 _eurusd_history_cache: tuple[float, list[dict]] = (0.0, [])
 
 
@@ -430,7 +486,29 @@ def compute_levels(db: Session, market_tag: str) -> dict:
             current = history[-1]["rate"]
         if current is None:
             return {"market_tag": market_tag, "current_price": None, "levels": [], "session": ""}
-        session_label = "spot (ECB daily history, 90d)"
+        session_label = "spot · Traditional daily pivots (prev session) + 90d swings"
+
+        # Intraday layer: the same Traditional daily pivots TradingView plots
+        # on the chart, computed from the previous session's H/L/C. They
+        # recompute every session, and each level re-sides live (support ↔
+        # resistance) as the market crosses it — break detection watches
+        # these exactly like every other level.
+        prev = get_eurusd_prev_day_ohlc()
+        if prev:
+            ph, pl, pc = prev
+            for price, name, why in traditional_pivots(ph, pl, pc):
+                kind = "support" if price <= current else "resistance"
+                levels.append(
+                    {
+                        "price": round(price, 5),
+                        "kind": kind,
+                        "label": name,
+                        "proven": False,
+                        "strength": 1,
+                        "reason": f"Traditional daily pivot — {why} From yesterday's session H {ph:.5f} / L {pl:.5f} / C {pc:.5f}; same formula TradingView's pivot study draws.",
+                    }
+                )
+
         closes = [pt["rate"] for pt in history]
         if len(closes) >= 7:
             # Swing highs/lows over the daily series, clustered to half-cent
@@ -465,7 +543,10 @@ def compute_levels(db: Session, market_tag: str) -> dict:
     levels.extend(_proven_levels(db, market_tag, current or 0.0))
 
     # Merge duplicates landing in the same bucket: keep the strongest claim.
-    bucket = LEVEL_BUCKET.get(market_tag, 1.0)
+    # The merge bucket is finer than the proven-detection bucket for FX —
+    # daily pivots sit ~25-45 pips apart and a half-cent bucket would
+    # swallow them into the swing levels.
+    bucket = 0.0010 if market_tag == "EURUSD" else LEVEL_BUCKET.get(market_tag, 1.0)
     merged: dict[tuple[float, str], dict] = {}
     for lv in levels:
         key = (round(round(lv["price"] / bucket) * bucket, 4), lv["kind"])
@@ -474,12 +555,13 @@ def compute_levels(db: Session, market_tag: str) -> dict:
             merged[key] = lv
     supports = sorted((lv for lv in merged.values() if lv["kind"] == "support"), key=lambda x: -x["price"])
     resistances = sorted((lv for lv in merged.values() if lv["kind"] == "resistance"), key=lambda x: x["price"])
+    cap = 8 if market_tag == "EURUSD" else 6
 
     return {
         "market_tag": market_tag,
         "current_price": current,
         "session": session_label,
-        "levels": supports[:6] + resistances[:6],
+        "levels": supports[:cap] + resistances[:cap],
         "computed_at": datetime.now(timezone.utc).isoformat(),
     }
 
