@@ -559,7 +559,7 @@ export default function Prices() {
 
       {/* ── The board first — the desk sheet's tables and FX block ─────── */}
       <div className="space-y-4">
-      <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_1fr] gap-4 items-start">
+      <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_1fr] gap-4 items-stretch">
         <div className="bg-bg-raised border border-border p-4 overflow-x-auto">
           <h3 className="kicker text-[11px] text-tsr20 mb-2">TSR20 Futures · SGX SICOM</h3>
           <table className="w-full min-w-[640px] border-collapse">
@@ -587,9 +587,6 @@ export default function Prices() {
               ))}
             </tbody>
           </table>
-          <p className="kicker text-[8px] text-text-faint mt-2">
-            Price (T) updates instantly on a $9+ move, else on the hourly slots from the 05:30 IST open; O/H/L/Volume/OI refresh every pass; L.S is the previous day's close, set once daily at open. Cells stay editable as a manual override.
-          </p>
         </div>
 
         <div className="bg-bg-raised border border-border p-4 overflow-x-auto">
@@ -616,7 +613,6 @@ export default function Prices() {
               ))}
             </tbody>
           </table>
-          <p className="kicker text-[8px] text-text-faint mt-2">Prev OI = Open Interest − Change; % = |ΔT| ÷ L.S — both derived.</p>
         </div>
       </div>
 

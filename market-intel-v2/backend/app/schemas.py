@@ -25,6 +25,7 @@ class ClimateReadingOut(BaseModel):
     reading_date: str
     rainfall_mm: float
     rainfall_7d_avg_mm: float
+    forecast_7d_mm: float
     disruption_score: float
     source: str
 

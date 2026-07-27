@@ -128,6 +128,7 @@ def run_climate_job() -> None:
                     reading_date=r["reading_date"],
                     rainfall_mm=r["rainfall_today_mm"],
                     rainfall_7d_avg_mm=r["rainfall_7d_avg_mm"],
+                    forecast_7d_mm=r.get("forecast_7d_mm", 0.0),
                     disruption_score=r["disruption_score"],
                     source="open-meteo",
                 )

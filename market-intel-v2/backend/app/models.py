@@ -189,6 +189,7 @@ class ClimateReading(Base):
     reading_date: Mapped[str] = mapped_column(String, nullable=False)  # YYYY-MM-DD
     rainfall_mm: Mapped[float] = mapped_column(Float, nullable=False)
     rainfall_7d_avg_mm: Mapped[float] = mapped_column(Float, nullable=False)
+    forecast_7d_mm: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)  # next-7-day forecast rain
     disruption_score: Mapped[float] = mapped_column(Float, nullable=False)  # 0-100, derived from rainfall anomaly
     source: Mapped[str] = mapped_column(String, nullable=False, default="open-meteo")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)

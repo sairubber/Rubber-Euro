@@ -27,6 +27,7 @@ export interface ClimateReading {
   reading_date: string;
   rainfall_mm: number;
   rainfall_7d_avg_mm: number;
+  forecast_7d_mm: number;
   disruption_score: number;
   source: string;
 }

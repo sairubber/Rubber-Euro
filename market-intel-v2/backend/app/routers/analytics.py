@@ -34,6 +34,7 @@ def get_climate(db: Session = Depends(get_db)):
             reading_date=r.reading_date,
             rainfall_mm=r.rainfall_mm,
             rainfall_7d_avg_mm=r.rainfall_7d_avg_mm,
+            forecast_7d_mm=getattr(r, "forecast_7d_mm", 0.0) or 0.0,
             disruption_score=r.disruption_score,
             source=r.source,
         )

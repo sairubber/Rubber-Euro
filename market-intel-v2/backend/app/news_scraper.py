@@ -159,6 +159,17 @@ NICHE_QUERIES: dict[str, list[tuple[str, str]]] = {
         ("EUDR rubber deforestation regulation", "trade"),
         ("Michelin OR Bridgestone OR Goodyear natural rubber", "headline"),
         ("rubber glove latex demand industry", "headline"),
+        # Climate → supply: the direct weather/production channel.
+        ("climate change rubber production drought", "disruption"),
+        ("El Nino OR La Nina rubber Southeast Asia", "disruption"),
+        ("monsoon rain rubber tapping Kerala OR Thailand", "disruption"),
+        ("heatwave OR drought rubber plantation yield", "disruption"),
+        # War / logistics: conflict and freight shocks hit rubber shipping.
+        ("Red Sea shipping attack cargo Asia", "disruption"),
+        ("war conflict supply chain rubber Asia", "disruption"),
+        ("Strait of Malacca OR Suez shipping disruption", "disruption"),
+        ("container freight rates Asia Europe surge", "trade"),
+        ("port strike OR port congestion Southeast Asia", "disruption"),
     ],
     "EURUSD": [
         ("EUR/USD forex forecast", "headline"),
@@ -177,6 +188,12 @@ NICHE_QUERIES: dict[str, list[tuple[str, str]]] = {
         ("US treasury yields euro dollar bond market", "headline"),
         ("EUR/USD technical analysis support resistance", "headline"),
         ("German economy Bundesbank euro", "headline"),
+        # War / geopolitics: the risk channel that moves EUR/USD hardest.
+        ("Middle East war oil price euro dollar", "disruption"),
+        ("Russia Ukraine war euro economy energy", "disruption"),
+        ("Iran Strait of Hormuz oil dollar", "disruption"),
+        ("geopolitical risk safe haven dollar euro", "headline"),
+        ("NATO Europe defence spending euro", "headline"),
     ],
 }
 

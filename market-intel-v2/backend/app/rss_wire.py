@@ -64,12 +64,16 @@ FEEDS: list[tuple[str, str, str]] = [
     ("https://e.vnexpress.net/rss/business.rss", "TSR20", "headline"),
     ("https://www.freemalaysiatoday.com/category/business/feed/", "TSR20", "headline"),
     ("https://www.channelnewsasia.com/api/v1/rss-outbound-feed?_format=xml&category=6936", "TSR20", "headline"),
+    # Shipping/logistics — freight shocks are rubber-supply shocks.
+    ("https://gcaptain.com/feed/", "TSR20", "disruption"),
     # EUR/USD
     ("https://www.fxstreet.com/rss/news", "EURUSD", "headline"),
     ("https://www.forexlive.com/feed/news", "EURUSD", "headline"),
     ("https://www.actionforex.com/feed/", "EURUSD", "headline"),
     ("https://www.fxempire.com/api/v1/en/articles/rss/news", "EURUSD", "headline"),
     ("https://www.investing.com/rss/news_1.rss", "EURUSD", "headline"),
+    # War / geopolitics wire — conflict headlines that move the majors.
+    ("https://www.aljazeera.com/xml/rss/all.xml", "EURUSD", "disruption"),
 ]
 
 _TAG_RE = re.compile(r"<[^>]+>")
@@ -90,7 +94,7 @@ def _parse_date(raw: str | None) -> datetime:
         return datetime.now(timezone.utc)
 
 
-def fetch_feed(url: str, market: str, category: str, max_items: int = 12) -> list[dict]:
+def fetch_feed(url: str, market: str, category: str, max_items: int = 20) -> list[dict]:
     """Parse one publisher feed. Returns [] on any failure — one dead feed
     must never stop the pass."""
     try:

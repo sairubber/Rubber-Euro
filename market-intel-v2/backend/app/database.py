@@ -50,6 +50,7 @@ def init_db():
             "ALTER TABLE trade_flows ADD COLUMN currency VARCHAR DEFAULT 'USD'",
             "ALTER TABLE news_articles ADD COLUMN key_points TEXT",
             "ALTER TABLE news_articles ADD COLUMN image_url TEXT",
+            "ALTER TABLE climate_readings ADD COLUMN forecast_7d_mm FLOAT DEFAULT 0",
         ):
             try:
                 conn.exec_driver_sql(ddl)

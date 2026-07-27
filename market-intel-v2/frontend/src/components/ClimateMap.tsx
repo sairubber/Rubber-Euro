@@ -52,17 +52,27 @@ export function ClimateMap({ climate, signals }: { climate: ClimateReading[]; si
               pathOptions={{ color, fillColor: color, fillOpacity: 0.65, weight: 1.5 }}
             >
               <Popup>
-                <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, minWidth: 160 }}>
-                  <p style={{ fontWeight: 600, marginBottom: 2 }}>{c.region}</p>
+                <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12.5, minWidth: 200, lineHeight: 1.5 }}>
+                  <p style={{ fontWeight: 700, marginBottom: 2 }}>{c.region}</p>
                   <p style={{ color: "#888", marginBottom: 6 }}>{c.country}</p>
                   <p>
-                    Risk: <strong style={{ color }}>{level}</strong>
+                    Supply risk: <strong style={{ color }}>{level}</strong>
                     {signal && ` (${signal.composite_score.toFixed(0)}/100)`}
+                    {signal?.trend && ` · ${signal.trend}`}
                   </p>
-                  <p>
-                    {c.rainfall_mm} mm today · {c.rainfall_7d_avg_mm} mm 7-day avg
+                  <p style={{ marginTop: 4 }}>
+                    Rain today: <strong>{c.rainfall_mm} mm</strong>
+                    <br />
+                    7-day average: <strong>{c.rainfall_7d_avg_mm} mm/day</strong>
+                    <br />
+                    Next 7 days (forecast): <strong>{c.forecast_7d_mm} mm</strong>
                   </p>
-                  {signal && signal.news_article_count > 0 && <p>{signal.news_article_count} matched disruption report(s)</p>}
+                  {signal && signal.news_article_count > 0 && (
+                    <p style={{ marginTop: 4 }}>
+                      <strong>{signal.news_article_count}</strong> matched disruption report(s)
+                    </p>
+                  )}
+                  {signal?.rationale && <p style={{ marginTop: 4, color: "#555" }}>{signal.rationale}</p>}
                 </div>
               </Popup>
             </CircleMarker>
