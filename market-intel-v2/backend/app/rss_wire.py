@@ -42,18 +42,28 @@ _http = httpx.Client(
 )
 
 # (feed url, market, category). Verified reachable and returning items.
+# Generic commodity/FX feeds are safe to list wide: every RSS batch passes
+# through is_market_news() before storage, so off-topic items never land.
 FEEDS: list[tuple[str, str, str]] = [
     # TSR20 / natural rubber
     ("https://www.tyrepress.com/feed/", "TSR20", "trade"),
     ("https://rubberjournalasia.com/feed/", "TSR20", "trade"),
+    ("https://www.rubberworld.com/feed/", "TSR20", "trade"),
     ("https://www.investing.com/rss/commodities.rss", "TSR20", "headline"),
     (
         "https://economictimes.indiatimes.com/markets/commodities/rssfeeds/1977021501.cms",
         "TSR20",
         "headline",
     ),
+    ("https://www.hellenicshippingnews.com/category/commodities/commodity-news/feed/", "TSR20", "trade"),
+    ("https://www.business-standard.com/rss/markets/commodities-10608.rss", "TSR20", "headline"),
+    ("https://www.moneycontrol.com/rss/commodities.xml", "TSR20", "headline"),
     # EUR/USD
     ("https://www.fxstreet.com/rss/news", "EURUSD", "headline"),
+    ("https://www.forexlive.com/feed/news", "EURUSD", "headline"),
+    ("https://www.actionforex.com/feed/", "EURUSD", "headline"),
+    ("https://www.fxempire.com/api/v1/en/articles/rss/news", "EURUSD", "headline"),
+    ("https://www.investing.com/rss/news_1.rss", "EURUSD", "headline"),
 ]
 
 _TAG_RE = re.compile(r"<[^>]+>")

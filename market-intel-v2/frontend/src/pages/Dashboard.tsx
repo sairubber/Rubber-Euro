@@ -75,7 +75,8 @@ export default function Dashboard() {
   const historyQueries = useQueries({
     queries: MARKETS.map((m) => ({
       queryKey: ["news-history", m.code],
-      queryFn: () => api.getNewsHistory(m.code, { limit: 24 }),
+      // Overview shows only the last 24 hours — the Archive keeps the rest.
+      queryFn: () => api.getNewsHistory(m.code, { limit: 24, hours: 24 }),
       refetchInterval: 60_000,
     })),
   });

@@ -32,10 +32,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   getLatestNews: (market: string) => request<NewsArticleRecord>(`/news/latest/${market}`),
-  getNewsHistory: (market: string, opts?: { limit?: number; category?: NewsCategory }) => {
+  getNewsHistory: (market: string, opts?: { limit?: number; category?: NewsCategory; hours?: number }) => {
     const params = new URLSearchParams();
     if (opts?.limit) params.set("limit", String(opts.limit));
     if (opts?.category) params.set("category", opts.category);
+    if (opts?.hours) params.set("hours", String(opts.hours));
     const qs = params.toString();
     return request<NewsArticleRecord[]>(`/news/history/${market}${qs ? `?${qs}` : ""}`);
   },

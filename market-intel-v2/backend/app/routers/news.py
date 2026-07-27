@@ -59,15 +59,26 @@ def get_latest_news(market: str, db: Session = Depends(get_db)):
 
 
 @router.get("/news/history/{market}", response_model=list[NewsArticleOut])
-def get_news_history(market: str, limit: int = 30, category: str | None = None, db: Session = Depends(get_db)):
+def get_news_history(
+    market: str,
+    limit: int = 30,
+    category: str | None = None,
+    hours: int | None = None,
+    db: Session = Depends(get_db),
+):
     _validate_market(market)
     limit = max(1, min(limit, 200))
-    cache_key = f"history:{market}:{limit}:{category or ''}"
+    cache_key = f"history:{market}:{limit}:{category or ''}:{hours or ''}"
     if (cached := cache.get(cache_key)) is not None:
         return cached
     query = db.query(NewsArticle).filter(NewsArticle.market_tag == market)
     if category:
         query = query.filter(NewsArticle.category == category)
+    if hours:
+        from datetime import datetime, timedelta, timezone
+
+        cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=min(hours, 24 * 30))
+        query = query.filter(NewsArticle.published_at >= cutoff)
     articles = query.order_by(NewsArticle.published_at.desc()).limit(limit).all()
     out = [_to_out(a) for a in articles]
     cache.put(cache_key, out)

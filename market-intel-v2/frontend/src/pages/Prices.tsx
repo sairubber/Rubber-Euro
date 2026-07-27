@@ -650,7 +650,7 @@ export default function Prices() {
         <div className="bg-bg-raised border border-border p-4">
           <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
             <h3 className="kicker text-[11px] text-tsr20">TSR20 · SGX chart</h3>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 flex-wrap">
               {Object.keys(TSR_TIMEFRAMES).map((k) => (
                 <button
                   key={k}

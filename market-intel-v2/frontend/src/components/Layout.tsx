@@ -115,7 +115,12 @@ export default function Layout() {
         </div>
 
         <nav className="border-t border-rule">
-          <div className="max-w-[1600px] mx-auto px-4 md:px-8 flex items-center justify-center gap-1 overflow-x-auto">
+          {/* mx-auto on the INNER wrapper, not justify-center on the scroll
+              container: centered overflow clips its leading items (the
+              Prices tab was unreachable on phones). Auto margins center the
+              row when it fits and let it scroll from the start when not. */}
+          <div className="max-w-[1600px] mx-auto px-2 md:px-8 flex items-center overflow-x-auto">
+            <div className="flex items-center gap-1 mx-auto">
             {NAV_GROUPS.map((group, gi) => (
               <div key={group.label} className="flex items-center">
                 {gi > 0 && (
@@ -140,6 +145,7 @@ export default function Layout() {
                 ))}
               </div>
             ))}
+            </div>
           </div>
         </nav>
 

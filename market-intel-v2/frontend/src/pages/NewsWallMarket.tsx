@@ -43,7 +43,8 @@ export default function NewsWallMarket() {
 
   const { data: feed, isLoading } = useQuery({
     queryKey: ["news-wall", market, category],
-    queryFn: () => api.getNewsHistory(market, { limit: 60, category }),
+    // Walls carry the last 24 hours only; older stories live in the Archive.
+    queryFn: () => api.getNewsHistory(market, { limit: 60, category, hours: 24 }),
     enabled: !!marketInfo,
     refetchInterval: 60_000,
   });
