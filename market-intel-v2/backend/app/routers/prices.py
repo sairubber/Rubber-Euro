@@ -111,25 +111,35 @@ def level_events(market_tag: str, limit: int = 30, db: Session = Depends(get_db)
 
 @router.get("/prices/physical")
 def physical_prices(db: Session = Depends(get_db)):
-    """Latest published day of Rubber Board of India spot prices, grouped by
-    market location (per 100 kg, INR + USD)."""
-    latest_date = db.query(PhysicalPrice.price_date).order_by(PhysicalPrice.price_date.desc()).first()
-    if latest_date is None:
-        return {"price_date": None, "locations": []}
-    rows = (
-        db.query(PhysicalPrice)
-        .filter(PhysicalPrice.price_date == latest_date[0])
-        .order_by(PhysicalPrice.location.asc(), PhysicalPrice.grade.asc())
-        .all()
-    )
-    grouped: dict[str, list] = {}
-    for r in rows:
-        grouped.setdefault(r.location, []).append({"grade": r.grade, "inr": r.inr, "usd": r.usd})
+    """Latest published day of Rubber Board of India spot prices per market
+    location (per 100 kg, INR + USD). Each location carries its own date —
+    the international sheet (Bangkok) often publishes on days the Indian
+    domestic markets don't."""
+    locations = [r[0] for r in db.query(PhysicalPrice.location).distinct().all()]
+    out = []
+    overall_latest = None
+    for loc in sorted(locations):
+        latest = (
+            db.query(PhysicalPrice.price_date)
+            .filter(PhysicalPrice.location == loc)
+            .order_by(PhysicalPrice.price_date.desc())
+            .first()
+        )
+        if latest is None:
+            continue
+        rows = (
+            db.query(PhysicalPrice)
+            .filter(PhysicalPrice.location == loc, PhysicalPrice.price_date == latest[0])
+            .order_by(PhysicalPrice.grade.asc())
+            .all()
+        )
+        out.append({"location": loc, "price_date": latest[0], "rows": [{"grade": r.grade, "inr": r.inr, "usd": r.usd} for r in rows]})
+        overall_latest = max(overall_latest or latest[0], latest[0])
     return {
-        "price_date": latest_date[0],
+        "price_date": overall_latest,
         "unit": "per 100 kg",
         "source": "Rubber Board of India",
-        "locations": [{"location": k, "rows": v} for k, v in grouped.items()],
+        "locations": out,
     }
 
 

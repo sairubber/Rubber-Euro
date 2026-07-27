@@ -153,6 +153,12 @@ NICHE_QUERIES: dict[str, list[tuple[str, str]]] = {
         ("rubber tapping disruption OR rubber plantation flooding", "disruption"),
         ("Thailand flood rubber OR Vietnam typhoon rubber", "disruption"),
         ("rubber tree disease outbreak Southeast Asia", "disruption"),
+        ("Malaysia SMR rubber price OR Malaysian Rubber Board", "headline"),
+        ("Indonesia SIR20 rubber export", "trade"),
+        ("Japan OSE rubber futures RSS3", "headline"),
+        ("EUDR rubber deforestation regulation", "trade"),
+        ("Michelin OR Bridgestone OR Goodyear natural rubber", "headline"),
+        ("rubber glove latex demand industry", "headline"),
     ],
     "EURUSD": [
         ("EUR/USD forex forecast", "headline"),
@@ -166,6 +172,11 @@ NICHE_QUERIES: dict[str, list[tuple[str, str]]] = {
         ("Fed FOMC minutes rate decision", "trade"),
         ("eurozone recession risk OR eurozone growth data", "disruption"),
         ("US inflation CPI surprise dollar", "disruption"),
+        ("euro area PMI manufacturing services data", "headline"),
+        ("US nonfarm payrolls jobs report dollar", "headline"),
+        ("US treasury yields euro dollar bond market", "headline"),
+        ("EUR/USD technical analysis support resistance", "headline"),
+        ("German economy Bundesbank euro", "headline"),
     ],
 }
 

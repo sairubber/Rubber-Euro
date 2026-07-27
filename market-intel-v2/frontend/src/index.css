@@ -5,27 +5,24 @@
   --font-serif: "Fraunces", Georgia, "Times New Roman", serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
-  /* Light editorial paper. Warm cream rather than clinical white — this is a
-     newspaper, and a pure #FFF ground makes long-form reading harsher and the
-     gold accent look dirty. */
-  --color-bg: #f7f4ed;
-  --color-bg-raised: #fffdf8;
-  --color-surface: #efeae0;
-  --color-surface-hover: #e7e1d5;
-  --color-border: #ddd5c7;
-  --color-border-subtle: #e8e2d6;
-  --color-rule: #c9bfad;
+  /* Buletin-style news portal (after Kretya's "Buletin", the top-rated news
+     design on Dribbble's news-website tag): a cool light ground with pure
+     white cards, near-black text, and a red editorial accent. Higher
+     contrast throughout than the old cream theme — text reads at a glance. */
+  --color-bg: #f4f5f6;
+  --color-bg-raised: #ffffff;
+  --color-surface: #eef0f2;
+  --color-surface-hover: #e6e8eb;
+  --color-border: #e2e4e8;
+  --color-border-subtle: #edeef1;
+  --color-rule: #d8dade;
 
-  /* Measured against --color-bg in the browser, not eyeballed:
-     text 17.2:1, dim 7.3:1, faint 4.8:1, accent 5.0:1 — all clear WCAG AA.
-     The first pass had faint at 4.42 and accent at 4.05, both of which
-     fail; they are darkened here rather than left "close enough". */
-  --color-text: #14100c;
-  --color-text-dim: #574f44;
-  --color-text-faint: #736a5e;
+  --color-text: #101418;
+  --color-text-dim: #3d434b;
+  --color-text-faint: #61686f;
 
-  --color-accent: #8a6118;
-  --color-accent-dim: #f0e4cc;
+  --color-accent: #d6281f;
+  --color-accent-dim: #fdecea;
 
   /* Market-coded: TSR20 forest green (latex/plantation), EUR/USD ink blue.
      Both darkened from the dark-theme versions — a colour that reads bright
@@ -39,10 +36,10 @@
   --color-bull-dim: #e2f0e7;
   --color-bear: #b3352f;
   --color-bear-dim: #f7e5e3;
-  --color-neutral: #6d6559;
-  --color-neutral-dim: #ece7dd;
-  --color-amber: #8a6118;
-  --color-amber-dim: #f5ead3;
+  --color-neutral: #5d646c;
+  --color-neutral-dim: #e9ebee;
+  --color-amber: #b45309;
+  --color-amber-dim: #fdf0e0;
 
   --ease-press: cubic-bezier(0.32, 0.72, 0, 1);
 }
@@ -91,6 +88,53 @@
 }
 
 @layer utilities {
+  /* ── Buletin redesign layer ──────────────────────────────────────────
+     Applied globally so every page picks it up without touching thirty
+     components: readable type floor, rounded white cards with a soft
+     shadow, pill-shaped chips. */
+
+  /* Readability floor: the old design leaned on 8-11px metadata that was
+     genuinely hard to read. Arbitrary-size utilities are lifted to a
+     minimum comfortable size site-wide. */
+  .text-\[8px\] { font-size: 0.66rem !important; }
+  .text-\[9px\] { font-size: 0.71rem !important; }
+  .text-\[10px\] { font-size: 0.75rem !important; }
+  .text-\[11px\] { font-size: 0.79rem !important; }
+  .text-\[12px\] { font-size: 0.85rem !important; }
+  .text-\[13px\] { font-size: 0.875rem !important; }
+  .text-\[14px\] { font-size: 0.95rem !important; }
+  .text-\[15px\] { font-size: 1rem !important; }
+  .text-xs { font-size: 0.8125rem !important; }
+
+  /* Card language: white, rounded, softly lifted. */
+  .border.bg-bg-raised,
+  .overflow-hidden.border {
+    border-radius: 16px;
+    border-color: var(--color-border-subtle);
+    box-shadow:
+      0 1px 2px rgba(16, 20, 24, 0.04),
+      0 10px 28px -18px rgba(16, 20, 24, 0.12);
+  }
+
+  /* Thumbnails and media slots round with the cards. */
+  .shrink-0.overflow-hidden.border {
+    border-radius: 12px;
+    box-shadow: none;
+  }
+
+  /* Filter chips and small bordered labels become pills. */
+  .kicker.border,
+  button.kicker,
+  a.kicker.border,
+  span.kicker.border {
+    border-radius: 999px;
+  }
+
+  input[type="search"],
+  input[type="number"] {
+    border-radius: 10px;
+  }
+
   .num {
     font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
@@ -119,7 +163,7 @@
     inset: 0;
     z-index: 40;
     pointer-events: none;
-    opacity: 0.035;
+    opacity: 0.018;
     mix-blend-mode: multiply;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.6'/%3E%3C/svg%3E");
   }

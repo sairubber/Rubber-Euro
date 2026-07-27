@@ -27,10 +27,14 @@ HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36",
 }
 
-_TAB_RE = re.compile(r'<a[^>]*data-toggle="tab"[^>]*href="#(loc\d+)"[^>]*>(.*?)</a>', re.S)
-_PANE_RE = re.compile(r'<div id="(loc\d+)"[^>]*>(.*?)</div>\s*(?=<div id="loc|<div class="tab-content|$)', re.S)
+_TAB_RE = re.compile(r'<a[^>]*data-toggle="tab"[^>]*href="#((?:ex)?loc\d+)"[^>]*>(.*?)</a>', re.S)
+# Each pane holds exactly one price table — capture up to its close, which
+# also anchors the LAST pane (the international/Bangkok one has no sibling
+# pane following it for a lookahead to latch onto).
+_PANE_RE = re.compile(r'<div id="((?:ex)?loc\d+)"[^>]*>(.*?</table>)', re.S)
 _ROW_RE = re.compile(r"<tr[^>]*>\s*<td[^>]*>(.*?)</td>\s*<td[^>]*>(.*?)</td>\s*<td[^>]*>(.*?)</td>", re.S)
-_DATE_RE = re.compile(r"on\s+(\d{1,2})-(\d{1,2})-(\d{4})")
+_DOMESTIC_DATE_RE = re.compile(r"Domestic Market[^<]{0,40}?on\s+(\d{1,2})-(\d{1,2})-(\d{4})")
+_INTL_DATE_RE = re.compile(r"International Market[^<]{0,40}?on\s+(\d{1,2})-(\d{1,2})-(\d{4})")
 _STRIP = re.compile(r"<[^>]+>|&#\d+;|&nbsp;")
 
 
@@ -48,21 +52,30 @@ def _num(raw: str) -> float | None:
         return None
 
 
+def _iso(m: re.Match | None) -> str:
+    if m is None:
+        return datetime.now(timezone.utc).date().isoformat()
+    return f"{m.group(3)}-{int(m.group(2)):02d}-{int(m.group(1)):02d}"
+
+
 def fetch_rubberboard() -> list[dict]:
     """Parse the board's page into rows:
-    {location, grade, inr, usd, price_date}. Rows the board marks '*'
-    (no quotation that day) are skipped."""
+    {location, grade, inr, usd, price_date}. Covers both sections — the
+    domestic markets (locN: Kottayam/Kochi/Agartala) and the international
+    market (exlocN: Bangkok), each with its own publication date. Rows the
+    board marks '*' (no quotation that day) are skipped."""
     resp = httpx.get(RB_URL, headers=HEADERS, timeout=30, follow_redirects=True, verify=False)
     resp.raise_for_status()
     text = resp.text
 
-    m = _DATE_RE.search(text)
-    price_date = f"{m.group(3)}-{int(m.group(2)):02d}-{int(m.group(1)):02d}" if m else datetime.now(timezone.utc).date().isoformat()
+    domestic_date = _iso(_DOMESTIC_DATE_RE.search(text))
+    intl_date = _iso(_INTL_DATE_RE.search(text))
 
     labels = {tab_id: _clean(label) for tab_id, label in _TAB_RE.findall(text)}
     rows: list[dict] = []
     for pane_id, body in _PANE_RE.findall(text):
         location = labels.get(pane_id, pane_id)
+        price_date = intl_date if pane_id.startswith("exloc") else domestic_date
         for grade_raw, inr_raw, usd_raw in _ROW_RE.findall(body):
             grade = _clean(grade_raw)
             inr, usd = _num(inr_raw), _num(usd_raw)

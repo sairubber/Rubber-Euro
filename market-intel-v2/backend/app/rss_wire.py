@@ -58,6 +58,12 @@ FEEDS: list[tuple[str, str, str]] = [
     ("https://www.hellenicshippingnews.com/category/commodities/commodity-news/feed/", "TSR20", "trade"),
     ("https://www.business-standard.com/rss/markets/commodities-10608.rss", "TSR20", "headline"),
     ("https://www.moneycontrol.com/rss/commodities.xml", "TSR20", "headline"),
+    # Producer-country business press — is_market_news keeps only the
+    # rubber-relevant stories out of these general feeds.
+    ("https://www.bangkokpost.com/rss/data/business.xml", "TSR20", "headline"),
+    ("https://e.vnexpress.net/rss/business.rss", "TSR20", "headline"),
+    ("https://www.freemalaysiatoday.com/category/business/feed/", "TSR20", "headline"),
+    ("https://www.channelnewsasia.com/api/v1/rss-outbound-feed?_format=xml&category=6936", "TSR20", "headline"),
     # EUR/USD
     ("https://www.fxstreet.com/rss/news", "EURUSD", "headline"),
     ("https://www.forexlive.com/feed/news", "EURUSD", "headline"),

@@ -658,7 +658,10 @@ export default function Prices() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {physical.locations.map((loc) => (
               <div key={loc.location}>
-                <p className="kicker text-[10px] text-text-dim mb-1">{loc.location}</p>
+                <p className="kicker text-[10px] text-text-dim mb-1">
+                  {loc.location}
+                  {loc.price_date && <span className="text-text-faint ml-2">{loc.price_date}</span>}
+                </p>
                 <table className="w-full border-collapse">
                   <thead>
                     <tr className="border-b border-border">
