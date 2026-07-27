@@ -16,6 +16,7 @@ from app.enrich import extract_image, fetch_meta_description, normalize_title
 from app.models import ClimateReading, NewsArticle, TradeFlow
 from app.news import fetch_market_news
 from app.prices import refresh_fx_rates, seed_quotes_if_empty
+from app.physical import sync_physical_prices
 from app.sgx import sync_sgx_quotes
 from app.analyzer import build_summary, extract_key_points
 from app.news_scraper import is_market_news, iter_niche_query_batches
@@ -308,6 +309,20 @@ def run_sgx_job() -> None:
         db.close()
 
 
+def run_physical_job() -> None:
+    """Rubber Board of India daily spot prices — published once a day, so a
+    few pulls a day is plenty."""
+    db = SessionLocal()
+    try:
+        written = sync_physical_prices(db)
+        logger.info("Physical prices sync: %d new rows", written)
+    except Exception:
+        logger.exception("Physical prices sync failed — keeping last values")
+        db.rollback()
+    finally:
+        db.close()
+
+
 def _check_and_run_startup_jobs() -> None:
     db = SessionLocal()
     try:
@@ -331,6 +346,7 @@ def _check_and_run_startup_jobs() -> None:
         db.close()
     threading.Thread(target=run_fx_job, daemon=True).start()
     threading.Thread(target=run_sgx_job, daemon=True).start()
+    threading.Thread(target=run_physical_job, daemon=True).start()
 
     if not has_news:
         logger.info("No news found on startup, running an initial scrape")
@@ -388,6 +404,15 @@ def start_scheduler() -> None:
         run_sgx_job,
         IntervalTrigger(minutes=2, timezone=IST),
         id="sgx_job",
+        replace_existing=True,
+    )
+
+    # Rubber Board publishes once daily — refresh every 4 hours to catch the
+    # day's numbers whenever they land.
+    _scheduler.add_job(
+        run_physical_job,
+        IntervalTrigger(hours=4, timezone=IST),
+        id="physical_job",
         replace_existing=True,
     )
 

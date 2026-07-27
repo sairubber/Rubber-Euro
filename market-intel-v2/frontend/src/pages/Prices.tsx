@@ -510,6 +510,8 @@ export default function Prices() {
     },
   });
 
+  const { data: physical } = useQuery({ queryKey: ["physical"], queryFn: api.getPhysical, refetchInterval: 300_000 });
+
   const quotes = board?.quotes ?? [];
   const fx = board?.fx ?? [];
 
@@ -642,6 +644,49 @@ export default function Prices() {
           </div>
         )}
       </div>
+
+      {/* Physical (spot) rubber — the official Rubber Board of India daily
+          sheet; the futures/physical spread is what the desk trades against. */}
+      {physical && physical.locations.length > 0 && (
+        <div className="bg-bg-raised border border-border p-4">
+          <div className="flex items-baseline justify-between flex-wrap gap-2 mb-2">
+            <h3 className="kicker text-[11px] text-tsr20">Physical Rubber · Rubber Board of India</h3>
+            <span className="kicker text-[9px] text-text-faint">
+              {physical.price_date} · {physical.unit}
+            </span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {physical.locations.map((loc) => (
+              <div key={loc.location}>
+                <p className="kicker text-[10px] text-text-dim mb-1">{loc.location}</p>
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="border-b border-border">
+                      {["Grade", "INR ₹", "USD $"].map((h) => (
+                        <th key={h} className="kicker text-[9px] text-text-faint text-right first:text-left font-normal px-1 pb-1">
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loc.rows.map((r) => (
+                      <tr key={r.grade} className="border-b border-border-subtle last:border-0">
+                        <td className="text-[12px] text-text py-1 px-1">{r.grade}</td>
+                        <td className="num text-[12px] text-text text-right px-1">{r.inr.toLocaleString("en-IN")}</td>
+                        <td className="num text-[12px] text-text-dim text-right px-1">{r.usd != null ? r.usd.toFixed(2) : "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ))}
+          </div>
+          <p className="kicker text-[8px] text-text-faint mt-2">
+            Official daily spot sheet, refreshed a few times a day. Compare against the SGX front month above — that futures-vs-physical gap (the basis) is what physical desks trade against.
+          </p>
+        </div>
+      )}
       </div>
 
       {/* ── Charts + S/R — full-width, one under the other, so each chart

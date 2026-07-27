@@ -27,6 +27,8 @@ export default function NewsWallMarket() {
   const queryClient = useQueryClient();
   const [category, setCategory] = useState<NewsCategory | undefined>(undefined);
   const [country, setCountry] = useState<string | undefined>(undefined);
+  const [source, setSource] = useState<string | undefined>(undefined);
+  const [hoursBand, setHoursBand] = useState<number | undefined>(undefined);
   const [search, setSearch] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [newStories, setNewStories] = useState(0);
@@ -76,6 +78,8 @@ export default function NewsWallMarket() {
     newestSeenId.current = null;
     setNewStories(0);
     setCountry(undefined);
+    setSource(undefined);
+    setHoursBand(undefined);
     setSearch("");
   }, [market]);
 
@@ -88,9 +92,23 @@ export default function NewsWallMarket() {
     return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
   }, [feed]);
 
+  const sources = useMemo(() => {
+    if (!feed) return [];
+    const counts = new Map<string, number>();
+    for (const item of feed) {
+      if (item.source_name) counts.set(item.source_name, (counts.get(item.source_name) ?? 0) + 1);
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
+  }, [feed]);
+
   const filtered = useMemo(() => {
     let items: NewsArticleRecord[] = feed ?? [];
     if (country) items = items.filter((i) => i.country === country);
+    if (source) items = items.filter((i) => i.source_name === source);
+    if (hoursBand) {
+      const cutoff = Date.now() - hoursBand * 3600_000;
+      items = items.filter((i) => new Date(i.published_at).getTime() >= cutoff);
+    }
     const q = search.trim().toLowerCase();
     if (q) {
       items = items.filter(
@@ -101,7 +119,7 @@ export default function NewsWallMarket() {
       );
     }
     return items;
-  }, [feed, country, search]);
+  }, [feed, country, source, hoursBand, search]);
 
   async function handleRefresh() {
     setRefreshing(true);
@@ -121,7 +139,7 @@ export default function NewsWallMarket() {
     return <EmptyState title="Unknown market" description="Valid markets: TSR20, EURUSD." />;
   }
 
-  const isFiltering = !!search.trim() || !!country;
+  const isFiltering = !!search.trim() || !!country || !!source || !!hoursBand;
   const showLead = !category && !isFiltering && latest;
   const restOfFeed = showLead ? filtered.filter((item) => item.id !== latest?.id) : filtered;
 
@@ -204,6 +222,52 @@ export default function NewsWallMarket() {
               ))}
             </div>
           )}
+
+          {sources.length > 1 && (
+            <div className="flex items-center justify-center gap-1 flex-wrap">
+              <button
+                onClick={() => setSource(undefined)}
+                className={cn(
+                  "kicker text-[9px] px-2 py-0.5 border transition-colors",
+                  !source ? "border-accent/40 text-accent" : "border-border-subtle text-text-faint hover:text-text-dim"
+                )}
+              >
+                All sources
+              </button>
+              {sources.map(([name, count]) => (
+                <button
+                  key={name}
+                  onClick={() => setSource(source === name ? undefined : name)}
+                  className={cn(
+                    "kicker text-[9px] px-2 py-0.5 border transition-colors max-w-[140px] truncate",
+                    source === name ? "border-accent/40 text-accent bg-accent/10" : "border-border-subtle text-text-faint hover:text-text-dim"
+                  )}
+                >
+                  {name} <span className="opacity-60">{count}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div className="flex items-center justify-center gap-1 flex-wrap">
+            {[
+              { label: "Last 24h", value: undefined },
+              { label: "12h", value: 12 },
+              { label: "6h", value: 6 },
+              { label: "3h", value: 3 },
+            ].map((band) => (
+              <button
+                key={band.label}
+                onClick={() => setHoursBand(band.value)}
+                className={cn(
+                  "kicker text-[9px] px-2 py-0.5 border transition-colors",
+                  hoursBand === band.value ? "border-accent/40 text-accent bg-accent/10" : "border-border-subtle text-text-faint hover:text-text-dim"
+                )}
+              >
+                {band.label}
+              </button>
+            ))}
+          </div>
 
           <button
             onClick={handleRefresh}

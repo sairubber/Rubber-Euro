@@ -147,6 +147,24 @@ class LevelEvent(Base):
     ts: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False, index=True)
 
 
+class PhysicalPrice(Base):
+    """Official daily physical (spot) rubber prices published by the Rubber
+    Board of India — per 100 kg, INR and USD, per market location. One row
+    per (location, grade, date), so the table accumulates a real spot-price
+    history the longer the site runs."""
+
+    __tablename__ = "physical_prices"
+    __table_args__ = (UniqueConstraint("location", "grade", "price_date", name="uq_physical_row"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    location: Mapped[str] = mapped_column(String, nullable=False, index=True)  # Kottayam | Kochi | Agartala
+    grade: Mapped[str] = mapped_column(String, nullable=False)  # RSS4 | RSS5 | ...
+    inr: Mapped[float] = mapped_column(Float, nullable=False)  # ₹ per 100 kg
+    usd: Mapped[float | None] = mapped_column(Float, nullable=True)  # $ per 100 kg
+    price_date: Mapped[str] = mapped_column(String, nullable=False, index=True)  # YYYY-MM-DD
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+
 class FxRate(Base):
     """Latest live FX rate per pair, fetched from the free open.er-api.com
     endpoint (no key). One row per pair, overwritten each refresh; the

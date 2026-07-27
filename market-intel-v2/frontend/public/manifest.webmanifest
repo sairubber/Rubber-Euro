@@ -1,0 +1,13 @@
+{
+  "name": "The Research Wire — TSR20 & EUR/USD",
+  "short_name": "Research Wire",
+  "description": "Live SGX TSR20 rubber and EUR/USD market intelligence: prices, charts, support/resistance, and real news.",
+  "start_url": "/prices",
+  "display": "standalone",
+  "background_color": "#f7f4ed",
+  "theme_color": "#2f6b4f",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

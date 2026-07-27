@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import FuturesQuote, FxRate, LevelEvent, PriceTick
+from app.models import FuturesQuote, FxRate, LevelEvent, PhysicalPrice, PriceTick
 from app.prices import compute_levels, get_eurusd_history, get_fx_intraday, iso_utc, quote_out, refresh_fx_rates, upsert_quote
 from app.sgx import get_front_history, get_sgx_sync_status, sync_sgx_quotes
 
@@ -107,6 +107,30 @@ def level_events(market_tag: str, limit: int = 30, db: Session = Depends(get_db)
         }
         for e in events
     ]
+
+
+@router.get("/prices/physical")
+def physical_prices(db: Session = Depends(get_db)):
+    """Latest published day of Rubber Board of India spot prices, grouped by
+    market location (per 100 kg, INR + USD)."""
+    latest_date = db.query(PhysicalPrice.price_date).order_by(PhysicalPrice.price_date.desc()).first()
+    if latest_date is None:
+        return {"price_date": None, "locations": []}
+    rows = (
+        db.query(PhysicalPrice)
+        .filter(PhysicalPrice.price_date == latest_date[0])
+        .order_by(PhysicalPrice.location.asc(), PhysicalPrice.grade.asc())
+        .all()
+    )
+    grouped: dict[str, list] = {}
+    for r in rows:
+        grouped.setdefault(r.location, []).append({"grade": r.grade, "inr": r.inr, "usd": r.usd})
+    return {
+        "price_date": latest_date[0],
+        "unit": "per 100 kg",
+        "source": "Rubber Board of India",
+        "locations": [{"location": k, "rows": v} for k, v in grouped.items()],
+    }
 
 
 @router.get("/prices/tsr20-history")

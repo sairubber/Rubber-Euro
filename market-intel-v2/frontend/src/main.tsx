@@ -14,6 +14,13 @@ const queryClient = new QueryClient({
   },
 });
 
+// PWA: production only — a service worker on the dev server would fight HMR.
+if ("serviceWorker" in navigator && import.meta.env.PROD) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  });
+}
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>

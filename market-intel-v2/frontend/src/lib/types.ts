@@ -259,6 +259,13 @@ export interface FxHistoryPoint {
   rate: number;
 }
 
+export interface PhysicalPrices {
+  price_date: string | null;
+  unit?: string;
+  source?: string;
+  locations: { location: string; rows: { grade: string; inr: number; usd: number | null }[] }[];
+}
+
 export interface QuoteUpdate {
   market_tag: string;
   contract_month: string;
