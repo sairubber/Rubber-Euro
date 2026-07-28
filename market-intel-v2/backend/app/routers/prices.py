@@ -8,7 +8,7 @@ from app.database import get_db
 from app.models import FuturesQuote, FxRate, LevelEvent, PhysicalPrice, PriceTick
 from app.prices import compute_levels, get_eurusd_history, get_fx_intraday, iso_utc, quote_out, refresh_fx_rates, upsert_quote
 from app.sgx import get_front_history, get_sgx_sync_status, sync_sgx_quotes
-from app.shanghai import get_shanghai_sync_status
+from app.shanghai import get_shanghai_sync_status, sync_shanghai_quotes
 
 router = APIRouter(tags=["prices"])
 
@@ -174,6 +174,15 @@ def refresh_sgx(db: Session = Depends(get_db)):
     except Exception as exc:  # network / Akamai hiccup — board keeps last values
         raise HTTPException(status_code=502, detail=f"SGX fetch failed: {exc}") from exc
     return {"message": f"Synced {updated} contract months from SGX"}
+
+
+@router.post("/prices/refresh-shanghai")
+def refresh_shanghai(db: Session = Depends(get_db)):
+    try:
+        updated = sync_shanghai_quotes(db)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Shanghai fetch failed: {exc}") from exc
+    return {"message": f"Synced {updated} Shanghai contract months"}
 
 
 @router.post("/prices/refresh-fx")

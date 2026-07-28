@@ -83,7 +83,7 @@ def fetch_shanghai_rows() -> list[dict]:
         rows.append(
             {
                 "contract": f"NR{code}",
-                "label": f"{MONTH_ABBR[month - 1]} {year}",
+                "label": MONTH_ABBR[month - 1],
                 "month_order": year * 12 + month,
                 "price": price,
                 "open": open_,

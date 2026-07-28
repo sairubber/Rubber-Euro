@@ -66,6 +66,7 @@ export const api = {
   getLevels: (market: string, tf?: string) => request<PriceLevels>(`/prices/levels/${market}${tf ? `?tf=${tf}` : ""}`),
   getEurusdHistory: (days = 90) => request<FxHistoryPoint[]>(`/prices/eurusd-history?days=${days}`),
   refreshSgx: () => request<{ message: string }>("/prices/refresh-sgx", { method: "POST" }),
+  refreshShanghai: () => request<{ message: string }>("/prices/refresh-shanghai", { method: "POST" }),
   getFxIntraday: (pair: string) => request<PriceCandle[]>(`/prices/fx-intraday/${pair}`),
   getLevelEvents: (market: string, limit = 30) => request<LevelEventRecord[]>(`/prices/level-events/${market}?limit=${limit}`),
   getTsr20History: (days = 90) => request<PriceTickRecord[]>(`/prices/tsr20-history?days=${days}`),

@@ -523,6 +523,11 @@ export default function Prices() {
     },
   });
 
+  const shanghaiSync = useMutation({
+    mutationFn: api.refreshShanghai,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["price-board"] }),
+  });
+
   const quotes = board?.quotes ?? [];
   const shanghai = board?.shanghai ?? [];
   const fx = board?.fx ?? [];
@@ -550,24 +555,48 @@ export default function Prices() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {board?.sgx_synced_at && (
-            <span className="kicker text-[10px] text-text-faint flex items-center gap-1.5">
-              <span className="relative inline-flex h-1.5 w-1.5">
-                <span className="pulse-ring absolute inline-flex h-1.5 w-1.5 text-tsr20" />
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-tsr20" />
-              </span>
-              Prices delayed (SGX feed) · Last price fetched{" "}
-              {new Date(board.sgx_synced_at).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", second: "2-digit" })}{" "}
-              IST
+          <div className="flex flex-col items-end gap-1">
+            <span className="kicker text-[10px] text-text-faint flex items-center gap-1.5 flex-wrap justify-end">
+              {board?.sgx_synced_at && (
+                <>
+                  <span className="relative inline-flex h-1.5 w-1.5">
+                    <span className="pulse-ring absolute inline-flex h-1.5 w-1.5 text-tsr20" />
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-tsr20" />
+                  </span>
+                  Prices delayed (SGX feed) · Last price fetched{" "}
+                  {new Date(board.sgx_synced_at).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", second: "2-digit" })}{" "}
+                  IST
+                </>
+              )}
+              <button
+                onClick={() => sgxSync.mutate()}
+                disabled={sgxSync.isPending}
+                className="kicker text-[10px] text-accent hover:opacity-80 disabled:opacity-50 active:scale-[0.97] transition-[opacity,transform] duration-300"
+              >
+                {sgxSync.isPending ? "Syncing…" : "Sync now"}
+              </button>
             </span>
-          )}
-          <button
-            onClick={() => sgxSync.mutate()}
-            disabled={sgxSync.isPending}
-            className="kicker text-[10px] text-accent hover:opacity-80 disabled:opacity-50 active:scale-[0.97] transition-[opacity,transform] duration-300"
-          >
-            {sgxSync.isPending ? "Syncing…" : "Sync now"}
-          </button>
+            <span className="kicker text-[10px] text-text-faint flex items-center gap-1.5 flex-wrap justify-end">
+              {board?.shanghai_synced_at && (
+                <>
+                  <span className="relative inline-flex h-1.5 w-1.5">
+                    <span className="pulse-ring absolute inline-flex h-1.5 w-1.5 text-tsr20" />
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-tsr20" />
+                  </span>
+                  Prices delayed (Sina feed) · Last price fetched{" "}
+                  {new Date(board.shanghai_synced_at).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", second: "2-digit" })}{" "}
+                  IST
+                </>
+              )}
+              <button
+                onClick={() => shanghaiSync.mutate()}
+                disabled={shanghaiSync.isPending}
+                className="kicker text-[10px] text-accent hover:opacity-80 disabled:opacity-50 active:scale-[0.97] transition-[opacity,transform] duration-300"
+              >
+                {shanghaiSync.isPending ? "Syncing…" : "Sync now"}
+              </button>
+            </span>
+          </div>
         </div>
       </div>
 
@@ -660,20 +689,7 @@ export default function Prices() {
       {shanghai.length > 0 && (
         <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_1fr] gap-4 items-stretch">
           <div className="bg-bg-raised border border-border p-4 overflow-x-auto">
-            <div className="flex items-baseline justify-between flex-wrap gap-2 mb-2">
-              <h3 className="kicker text-[11px] text-tsr20">Shanghai TSR20 · INE NR (CNY/tonne)</h3>
-              {board?.shanghai_synced_at && (
-                <span className="kicker text-[9px] text-text-faint flex items-center gap-1.5">
-                  <span className="relative inline-flex h-1.5 w-1.5">
-                    <span className="pulse-ring absolute inline-flex h-1.5 w-1.5 text-tsr20" />
-                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-tsr20" />
-                  </span>
-                  Prices delayed (Sina feed) · Last price fetched{" "}
-                  {new Date(board.shanghai_synced_at).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", second: "2-digit" })}{" "}
-                  IST
-                </span>
-              )}
-            </div>
+            <h3 className="kicker text-[11px] text-tsr20 mb-2">Shanghai TSR20 · INE NR (CNY/tonne)</h3>
             <table className="w-full min-w-[640px] border-collapse">
               <thead>
                 <tr className="border-b border-border">
