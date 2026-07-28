@@ -19,6 +19,7 @@ from app.prices import refresh_fx_rates, seed_quotes_if_empty
 from app.physical import sync_physical_prices
 from app.sgx import sync_sgx_quotes
 from app.shanghai import sync_shanghai_quotes
+from app.japan import sync_japan_quotes
 from app.analyzer import build_summary, extract_key_points
 from app.news_scraper import is_market_news, iter_niche_query_batches
 from app.rss_wire import fetch_article_page, fetch_full_text, iter_rss_batches
@@ -312,13 +313,23 @@ def run_sgx_job() -> None:
 
 
 def run_shanghai_job() -> None:
-    """Shanghai INE TSR20 (NR) board via Sina's quote feed — one request."""
+    """Shanghai INE TSR20 (NR) board via Sina + the Japan (OSE) TSR20 front
+    month via TradingView's scanner — one request each."""
     db = SessionLocal()
     try:
         updated = sync_shanghai_quotes(db)
         logger.info("Shanghai NR sync: %d contract months", updated)
     except Exception:
         logger.exception("Shanghai NR sync failed — board keeps last values")
+        db.rollback()
+    finally:
+        db.close()
+
+    db = SessionLocal()
+    try:
+        sync_japan_quotes(db)
+    except Exception:
+        logger.exception("Japan TSR20 sync failed — board keeps last values")
         db.rollback()
     finally:
         db.close()

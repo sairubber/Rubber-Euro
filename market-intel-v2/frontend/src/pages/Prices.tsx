@@ -530,6 +530,7 @@ export default function Prices() {
 
   const quotes = board?.quotes ?? [];
   const shanghai = board?.shanghai ?? [];
+  const japan = board?.japan ?? [];
   const fx = board?.fx ?? [];
 
   const commit = (q: FuturesQuote, field: keyof QuoteUpdate) => (v: number) =>
@@ -754,6 +755,55 @@ export default function Prices() {
         <p className="kicker text-[9px] text-text-faint">
           INE NR sessions (IST): day session open 06:30 · close 12:30 — night session open 18:30 · close 20:30 · (China time 09:00–15:00 &amp; 21:00–23:00)
         </p>
+      )}
+
+      {/* Japan (JPX/OSE) TSR20 — the contract exists but barely trades:
+          most sessions print zero volume and zero open interest, and only
+          the front month carries data on any free feed. Shown honestly. */}
+      {japan.length > 0 && (
+        <>
+          <div className="bg-bg-raised border border-border p-4 overflow-x-auto">
+            <div className="flex items-baseline justify-between flex-wrap gap-2 mb-2">
+              <h3 className="kicker text-[11px] text-tsr20">Japan TSR20 · JPX-OSE (JPY/kg)</h3>
+              {board?.japan_synced_at && (
+                <span className="kicker text-[9px] text-text-faint">
+                  Fetched{" "}
+                  {new Date(board.japan_synced_at).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", second: "2-digit" })}{" "}
+                  IST
+                </span>
+              )}
+            </div>
+            <table className="w-full min-w-[640px] border-collapse">
+              <thead>
+                <tr className="border-b border-border">
+                  {["Month", "Current Market price (T)", "Change (ΔT)", "Open (O)", "High (H)", "Low (Lo)", "Volume (Vcon)", "Open Interest", "Change in OI"].map((h) => (
+                    <th key={h} className="kicker text-[9px] text-text-faint text-right first:text-left font-normal px-1.5 pb-2">
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {japan.map((q) => (
+                  <tr key={q.contract_month} className="border-b border-border-subtle last:border-0">
+                    <td className="text-[12px] font-medium text-text py-1.5 px-1.5">{q.contract_month}</td>
+                    <td className="num text-[12px] text-text text-right px-1.5">{q.price.toLocaleString("en-IN")}</td>
+                    <td className="text-right px-1.5"><DerivedCell value={q.change} signed /></td>
+                    <td className="num text-[12px] text-text-dim text-right px-1.5">{q.open.toLocaleString("en-IN")}</td>
+                    <td className="num text-[12px] text-text-dim text-right px-1.5">{q.high.toLocaleString("en-IN")}</td>
+                    <td className="num text-[12px] text-text-dim text-right px-1.5">{q.low.toLocaleString("en-IN")}</td>
+                    <td className="num text-[12px] text-text-dim text-right px-1.5">{q.volume.toLocaleString("en-IN")}</td>
+                    <td className="num text-[12px] text-text text-right px-1.5">{q.open_interest.toLocaleString("en-IN")}</td>
+                    <td className="text-right px-1.5"><DerivedCell value={q.oi_change} signed /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="kicker text-[9px] text-text-faint">
+            OSE TSR20 trades very thin — many sessions print zero volume and zero open interest, so only the front month has data (back months publish nothing). Sessions (IST): 05:15–11:45 &amp; 13:00–15:30 (Japan 08:45–15:15 &amp; 16:30–19:00)
+          </p>
+        </>
       )}
       </div>
 
