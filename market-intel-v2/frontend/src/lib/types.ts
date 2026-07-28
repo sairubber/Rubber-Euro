@@ -207,10 +207,8 @@ export interface PriceBoard {
   sgx_synced_at: string | null;
   sgx_price_as_of: string | null;
   shanghai_synced_at: string | null;
-  japan_synced_at: string | null;
   quotes: FuturesQuote[];
   shanghai: FuturesQuote[];
-  japan: FuturesQuote[];
   fx: FxRateRecord[];
 }
 
