@@ -1,7 +1,7 @@
 {
-  "name": "The Research Wire — TSR20 & EUR/USD",
-  "short_name": "Research Wire",
-  "description": "Live SGX TSR20 rubber and EUR/USD market intelligence: prices, charts, support/resistance, and real news.",
+  "name": "The Rubber Desk — Sai Commodities",
+  "short_name": "Rubber Desk",
+  "description": "Live SGX TSR20 rubber market intelligence: prices, charts, support/resistance, and real news.",
   "start_url": "/prices",
   "display": "standalone",
   "background_color": "#f7f4ed",

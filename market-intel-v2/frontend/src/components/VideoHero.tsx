@@ -92,7 +92,7 @@ export function VideoHero() {
           </span>
         </h1>
         <p className="text-sm sm:text-base text-white/75 mt-3 max-w-2xl leading-relaxed">
-          TSR20 natural rubber and EUR/USD — official customs data, scraped headlines, and rule-based supply signals.
+          TSR20 natural rubber — official customs data, scraped headlines, and rule-based supply signals.
         </p>
       </div>
     </section>

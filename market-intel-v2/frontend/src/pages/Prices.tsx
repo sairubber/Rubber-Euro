@@ -11,6 +11,7 @@ import {
   type UTCTimestamp,
 } from "lightweight-charts";
 import { api } from "@/lib/api";
+import { SHOW_EURUSD } from "@/lib/markets";
 import { cn, relativeTime } from "@/lib/utils";
 import { FeedSkeleton } from "@/components/ui/Skeleton";
 import type { FuturesQuote, LevelEventRecord, PriceCandle, PriceLevel, PriceTickRecord, QuoteUpdate } from "@/lib/types";
@@ -412,8 +413,15 @@ const TSR_TIMEFRAMES: Record<string, { cutoffHours: number; bucketSec: number }>
  * explanation of what that break conventionally means. */
 function BreakEventsPanel() {
   const { data: tsr } = useQuery({ queryKey: ["level-events", "TSR20"], queryFn: () => api.getLevelEvents("TSR20"), refetchInterval: 30_000 });
-  const { data: eu } = useQuery({ queryKey: ["level-events", "EURUSD"], queryFn: () => api.getLevelEvents("EURUSD"), refetchInterval: 30_000 });
-  const events = [...(tsr ?? []), ...(eu ?? [])].sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime()).slice(0, 20);
+  const { data: eu } = useQuery({
+    queryKey: ["level-events", "EURUSD"],
+    queryFn: () => api.getLevelEvents("EURUSD"),
+    refetchInterval: 30_000,
+    enabled: SHOW_EURUSD,
+  });
+  const events = [...(tsr ?? []), ...(SHOW_EURUSD ? (eu ?? []) : [])]
+    .sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime())
+    .slice(0, 20);
 
   return (
     <div className="bg-bg-raised border border-border p-4">
@@ -488,7 +496,12 @@ export default function Prices() {
   const { data: tsrLive } = useQuery({ queryKey: ["ticks", "TSR20_LIVE"], queryFn: () => api.getTicks("TSR20_LIVE", 24), refetchInterval: 30_000 });
   const { data: tsrHistory } = useQuery({ queryKey: ["tsr20-history"], queryFn: () => api.getTsr20History(365), staleTime: 900_000 });
   const { data: tsrLevels } = useQuery({ queryKey: ["levels", "TSR20"], queryFn: () => api.getLevels("TSR20"), refetchInterval: 30_000 });
-  const { data: euLevels } = useQuery({ queryKey: ["levels", "EURUSD"], queryFn: () => api.getLevels("EURUSD"), refetchInterval: 30_000 });
+  const { data: euLevels } = useQuery({
+    queryKey: ["levels", "EURUSD"],
+    queryFn: () => api.getLevels("EURUSD"),
+    refetchInterval: 30_000,
+    enabled: SHOW_EURUSD,
+  });
 
   const mutation = useMutation({
     mutationFn: (payload: QuoteUpdate) => api.putQuote(payload),
@@ -544,7 +557,9 @@ export default function Prices() {
                 <span className="pulse-ring absolute inline-flex h-1.5 w-1.5 text-tsr20" />
                 <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-tsr20" />
               </span>
-              SGX synced {relativeTime(board.sgx_synced_at)}
+              Prices delayed (SGX feed) · Last price fetched{" "}
+              {new Date(board.sgx_synced_at).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", second: "2-digit" })}{" "}
+              IST
             </span>
           )}
           <button
@@ -740,16 +755,18 @@ export default function Prices() {
           </div>
         </div>
 
-        <div className="bg-bg-raised border border-border p-4">
-          <div className="flex items-baseline justify-between mb-2">
-            <h3 className="kicker text-[11px] text-eurusd">EUR/USD · today, live</h3>
-            {euLevels?.current_price != null && <span className="num text-sm font-bold text-text">{euLevels.current_price.toFixed(5)}</span>}
+        {SHOW_EURUSD && (
+          <div className="bg-bg-raised border border-border p-4">
+            <div className="flex items-baseline justify-between mb-2">
+              <h3 className="kicker text-[11px] text-eurusd">EUR/USD · today, live</h3>
+              {euLevels?.current_price != null && <span className="num text-sm font-bold text-text">{euLevels.current_price.toFixed(5)}</span>}
+            </div>
+            <TradingViewChart symbol="FX:EURUSD" interval="15" />
+            <div className="mt-4 pt-3 border-t border-border-subtle">
+              <LevelsPanel market="EURUSD" decimals={4} />
+            </div>
           </div>
-          <TradingViewChart symbol="FX:EURUSD" interval="15" />
-          <div className="mt-4 pt-3 border-t border-border-subtle">
-            <LevelsPanel market="EURUSD" decimals={4} />
-          </div>
-        </div>
+        )}
       </div>
 
       {/* ── Break log — every S/R the market actually took out ─────────── */}

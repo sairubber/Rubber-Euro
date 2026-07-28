@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Play, TrendingUp } from "lucide-react";
 import { api } from "@/lib/api";
+import { SHOW_EURUSD } from "@/lib/markets";
 import { cn } from "@/lib/utils";
 import type { NewsArticleRecord, NewsCategory } from "@/lib/types";
 
@@ -88,13 +89,14 @@ export function VideoPanel() {
   );
 }
 
-const CATEGORY_ROWS: { key: NewsCategory | "all"; label: string; market: "TSR20" | "EURUSD" }[] = [
+const ALL_CATEGORY_ROWS: { key: NewsCategory | "all"; label: string; market: "TSR20" | "EURUSD" }[] = [
   { key: "headline", label: "TSR20 Headlines", market: "TSR20" },
   { key: "trade", label: "TSR20 Trade", market: "TSR20" },
   { key: "disruption", label: "TSR20 Disruption", market: "TSR20" },
   { key: "headline", label: "EUR/USD Headlines", market: "EURUSD" },
   { key: "trade", label: "EUR/USD Policy", market: "EURUSD" },
 ];
+const CATEGORY_ROWS = ALL_CATEGORY_ROWS.filter((r) => SHOW_EURUSD || r.market !== "EURUSD");
 
 /** Real counts per category, straight from the stored feed. */
 export function CategoriesPanel({ feed }: { feed: NewsArticleRecord[] }) {

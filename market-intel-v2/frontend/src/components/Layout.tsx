@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { Ticker } from "@/components/Ticker";
 import Prices from "@/pages/Prices";
+import { SHOW_EURUSD } from "@/lib/markets";
 
 const NAV_GROUPS = [
   {
@@ -12,7 +13,7 @@ const NAV_GROUPS = [
       { to: "/prices", label: "Prices", end: false, active: "border-tsr20 text-tsr20" },
       { to: "/", label: "Overview", end: true, active: "border-accent text-accent" },
       { to: "/wall/tsr20", label: "TSR20 Rubber", end: false, active: "border-tsr20 text-tsr20" },
-      { to: "/wall/eurusd", label: "EUR/USD", end: false, active: "border-eurusd text-eurusd" },
+      ...(SHOW_EURUSD ? [{ to: "/wall/eurusd", label: "EUR/USD", end: false, active: "border-eurusd text-eurusd" }] : []),
       { to: "/history", label: "Archive", end: false, active: "border-accent text-accent" },
     ],
   },
@@ -26,7 +27,7 @@ const NAV_GROUPS = [
   },
 ];
 
-const WORDMARK = "The Research Wire";
+const WORDMARK = "The Rubber Desk";
 
 function todayEdition(): string {
   return new Date().toLocaleDateString("en-IN", {
@@ -71,26 +72,44 @@ export default function Layout() {
 
       <header className="border-b border-rule">
         <div className="max-w-[1600px] mx-auto px-4 md:px-8 pt-6 pb-5">
-          <div className="flex items-center justify-between kicker text-[10px] text-text-faint mb-5">
-            <span>{todayEdition()} · IST Edition</span>
-            <div className="flex items-center gap-3">
-              <span className="flex items-center gap-1.5">
-                <span className="relative inline-flex h-1.5 w-1.5">
-                  <span
-                    className={cn(
-                      "pulse-ring absolute inline-flex h-1.5 w-1.5",
-                      status?.scheduler_running ? "text-tsr20" : "text-text-faint"
-                    )}
-                  />
-                  <span className={cn("relative inline-flex h-1.5 w-1.5 rounded-full", status?.scheduler_running ? "bg-tsr20" : "bg-text-faint")} />
+          <div className="flex items-center justify-between gap-4 mb-5 flex-wrap">
+            {/* Company mark, top-left. */}
+            <div className="flex items-center gap-4 min-w-0">
+              <a href="https://saicommodities.co.uk" target="_blank" rel="noopener noreferrer" className="shrink-0">
+                <img src="/sai-logo.png" alt="Sai Commodities — Growing together in global trading" className="h-9 md:h-11 w-auto" />
+              </a>
+              <div className="hidden md:flex flex-col kicker text-[10px] text-text-faint leading-relaxed">
+                <a href="mailto:enquiries@saicommodities.co.uk" className="hover:text-accent transition-colors normal-case tracking-normal font-sans">
+                  ✉ enquiries@saicommodities.co.uk
+                </a>
+                <a href="tel:+442086801508" className="hover:text-accent transition-colors normal-case tracking-normal font-sans">
+                  ✆ +44 20 8680 1508
+                </a>
+              </div>
+            </div>
+
+            {/* Edition date + desk status, top-right. */}
+            <div className="flex flex-col items-end gap-1 kicker text-[10px] text-text-faint">
+              <span>{todayEdition()} · IST Edition</span>
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-1.5">
+                  <span className="relative inline-flex h-1.5 w-1.5">
+                    <span
+                      className={cn(
+                        "pulse-ring absolute inline-flex h-1.5 w-1.5",
+                        status?.scheduler_running ? "text-tsr20" : "text-text-faint"
+                      )}
+                    />
+                    <span className={cn("relative inline-flex h-1.5 w-1.5 rounded-full", status?.scheduler_running ? "bg-tsr20" : "bg-text-faint")} />
+                  </span>
+                  {status?.scheduler_running ? "Desk live · 24/7" : "Desk idle"}
                 </span>
-                {status?.scheduler_running ? "Desk live · 24/7" : "Desk idle"}
-              </span>
-              {status?.last_scrape_at && (
-                <span className="hidden sm:inline" title={status.last_scrape_at}>
-                  Last scraped {relativeTime(status.last_scrape_at)}
-                </span>
-              )}
+                {status?.last_scrape_at && (
+                  <span className="hidden sm:inline" title={status.last_scrape_at}>
+                    Last scraped {relativeTime(status.last_scrape_at)}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -108,8 +127,12 @@ export default function Layout() {
 
             <p className="kicker text-[10px] md:text-[11px] mt-3 rise-in" style={{ animationDelay: "760ms" }}>
               <span className="text-tsr20">TSR20 Natural Rubber</span>
-              <span className="text-text-faint"> · </span>
-              <span className="text-eurusd">EUR/USD</span>
+              {SHOW_EURUSD && (
+                <>
+                  <span className="text-text-faint"> · </span>
+                  <span className="text-eurusd">EUR/USD</span>
+                </>
+              )}
             </p>
           </NavLink>
         </div>
@@ -163,7 +186,7 @@ export default function Layout() {
 
       <footer className="border-t border-rule mt-auto">
         <div className="max-w-[1600px] mx-auto px-4 md:px-8 py-8 kicker text-[10px] text-text-faint text-center">
-          The Research Wire — real news aggregated from public sources. Not investment advice. Research &amp; display only.
+          The Rubber Desk · Sai Commodities — real news aggregated from public sources. Not investment advice. Research &amp; display only.
         </div>
       </footer>
     </div>
