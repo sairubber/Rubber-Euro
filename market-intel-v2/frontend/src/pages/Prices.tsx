@@ -563,7 +563,10 @@ export default function Prices() {
                     <span className="pulse-ring absolute inline-flex h-1.5 w-1.5 text-tsr20" />
                     <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-tsr20" />
                   </span>
-                  Prices delayed (SGX feed) · Last price fetched{" "}
+                  SGX delayed ~10-15 min
+                  {board.sgx_price_as_of &&
+                    ` · Price as of ${new Date(board.sgx_price_as_of).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" })} IST`}{" "}
+                  · Fetched{" "}
                   {new Date(board.sgx_synced_at).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", second: "2-digit" })}{" "}
                   IST
                 </>
@@ -583,7 +586,7 @@ export default function Prices() {
                     <span className="pulse-ring absolute inline-flex h-1.5 w-1.5 text-tsr20" />
                     <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-tsr20" />
                   </span>
-                  Prices delayed (Sina feed) · Last price fetched{" "}
+                  Shanghai real-time (Sina feed) · Fetched{" "}
                   {new Date(board.shanghai_synced_at).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", second: "2-digit" })}{" "}
                   IST
                 </>
@@ -658,6 +661,9 @@ export default function Prices() {
           </table>
         </div>
       </div>
+      <p className="kicker text-[9px] text-text-faint">
+        SGX SICOM sessions (IST): session open 05:25 · session close 15:30, then T+1 session 15:45–20:30 · (Singapore time 07:55–18:00 &amp; 18:15–23:00)
+      </p>
 
       {/* FX strip lives with the board — real-time Google Finance spot
           (Yahoo fallback), 1-min server pull, 15s page refresh. */}
@@ -743,6 +749,11 @@ export default function Prices() {
             </table>
           </div>
         </div>
+      )}
+      {shanghai.length > 0 && (
+        <p className="kicker text-[9px] text-text-faint">
+          INE NR sessions (IST): day session open 06:30 · close 12:30 — night session open 18:30 · close 20:30 · (China time 09:00–15:00 &amp; 21:00–23:00)
+        </p>
       )}
       </div>
 

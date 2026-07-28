@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import logging
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 _front_history_cache: dict[int, tuple[float, list[dict]]] = {}
 from zoneinfo import ZoneInfo
@@ -58,11 +58,20 @@ MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "
 BOARD_MONTHS = 5
 
 _last_sync_at: datetime | None = None
+_price_as_of: str | None = None  # the FEED's own last-update stamp (exchange time)
 _close_set_on: str | None = None  # IST date the L.S column was last set
+
+SGT = timezone(timedelta(hours=8))
 
 
 def get_sgx_sync_status() -> str | None:
     return _last_sync_at.isoformat() if _last_sync_at else None
+
+
+def get_sgx_price_as_of() -> str | None:
+    """When the exchange itself last updated the delayed feed — the honest
+    'price as of' time, as opposed to when we fetched it."""
+    return _price_as_of
 
 
 def _pick(row: dict, *keys: str) -> float | None:
@@ -160,10 +169,19 @@ def sync_sgx_quotes(db: Session, force: bool = False) -> int:
     - Every pass also appends the front-month price to the "TSR20_LIVE"
       series when it changed — the live chart line.
     """
-    global _last_sync_at, _close_set_on
+    global _last_sync_at, _price_as_of, _close_set_on
     rows = fetch_sgx_rows()
     if not rows:
         return 0
+
+    # The feed's own last-update stamp (Singapore time) — surfaced in the UI
+    # as "price as of", separate from when we fetched.
+    lut = rows[0].get("last-update-time")
+    if lut:
+        try:
+            _price_as_of = datetime.strptime(lut, "%Y-%m-%d %H:%M:%S.%f").replace(tzinfo=SGT).isoformat()
+        except ValueError:
+            pass
 
     now_ist = datetime.now(IST_TZ)
     today_ist = now_ist.date().isoformat()

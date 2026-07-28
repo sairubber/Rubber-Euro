@@ -31,7 +31,10 @@ HEADERS = {
 }
 BOARD_MONTHS = 5
 
-MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+MONTH_ABBR = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+]
 
 _last_sync_at: datetime | None = None
 # Open interest at the start of the current trading date, per contract —
