@@ -206,6 +206,7 @@ export interface FxRateRecord {
 export interface PriceBoard {
   sgx_synced_at: string | null;
   quotes: FuturesQuote[];
+  shanghai: FuturesQuote[];
   fx: FxRateRecord[];
 }
 

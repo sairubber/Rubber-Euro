@@ -18,6 +18,7 @@ from app.news import fetch_market_news
 from app.prices import refresh_fx_rates, seed_quotes_if_empty
 from app.physical import sync_physical_prices
 from app.sgx import sync_sgx_quotes
+from app.shanghai import sync_shanghai_quotes
 from app.analyzer import build_summary, extract_key_points
 from app.news_scraper import is_market_news, iter_niche_query_batches
 from app.rss_wire import fetch_article_page, fetch_full_text, iter_rss_batches
@@ -310,6 +311,19 @@ def run_sgx_job() -> None:
         db.close()
 
 
+def run_shanghai_job() -> None:
+    """Shanghai INE TSR20 (NR) board via Sina's quote feed — one request."""
+    db = SessionLocal()
+    try:
+        updated = sync_shanghai_quotes(db)
+        logger.info("Shanghai NR sync: %d contract months", updated)
+    except Exception:
+        logger.exception("Shanghai NR sync failed — board keeps last values")
+        db.rollback()
+    finally:
+        db.close()
+
+
 def run_physical_job() -> None:
     """Rubber Board of India daily spot prices — published once a day, so a
     few pulls a day is plenty."""
@@ -347,6 +361,7 @@ def _check_and_run_startup_jobs() -> None:
         db.close()
     threading.Thread(target=run_fx_job, daemon=True).start()
     threading.Thread(target=run_sgx_job, daemon=True).start()
+    threading.Thread(target=run_shanghai_job, daemon=True).start()
     threading.Thread(target=run_physical_job, daemon=True).start()
 
     if not has_news:
@@ -404,6 +419,14 @@ def start_scheduler() -> None:
         run_sgx_job,
         IntervalTrigger(minutes=1, timezone=IST),
         id="sgx_job",
+        replace_existing=True,
+    )
+
+    # Shanghai INE NR quotes via Sina — live feed, every minute like SGX.
+    _scheduler.add_job(
+        run_shanghai_job,
+        IntervalTrigger(minutes=1, timezone=IST),
+        id="shanghai_job",
         replace_existing=True,
     )
 

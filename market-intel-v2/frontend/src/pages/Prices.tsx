@@ -523,9 +523,8 @@ export default function Prices() {
     },
   });
 
-  const { data: physical } = useQuery({ queryKey: ["physical"], queryFn: api.getPhysical, refetchInterval: 300_000 });
-
   const quotes = board?.quotes ?? [];
+  const shanghai = board?.shanghai ?? [];
   const fx = board?.fx ?? [];
 
   const commit = (q: FuturesQuote, field: keyof QuoteUpdate) => (v: number) =>
@@ -656,49 +655,64 @@ export default function Prices() {
         )}
       </div>
 
-      {/* Physical (spot) rubber — the official Rubber Board of India daily
-          sheet; the futures/physical spread is what the desk trades against. */}
-      {physical && physical.locations.length > 0 && (
-        <div className="bg-bg-raised border border-border p-4">
-          <div className="flex items-baseline justify-between flex-wrap gap-2 mb-2">
-            <h3 className="kicker text-[11px] text-tsr20">Physical Rubber · Rubber Board of India</h3>
-            <span className="kicker text-[9px] text-text-faint">
-              {physical.price_date} · {physical.unit}
-            </span>
+      {/* Shanghai TSR20 — the INE "NR" contract, same board format as SGX.
+          Prices in CNY/tonne straight from the exchange feed via Sina. */}
+      {shanghai.length > 0 && (
+        <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_1fr] gap-4 items-stretch">
+          <div className="bg-bg-raised border border-border p-4 overflow-x-auto">
+            <h3 className="kicker text-[11px] text-tsr20 mb-2">Shanghai TSR20 · INE NR (CNY/tonne)</h3>
+            <table className="w-full min-w-[640px] border-collapse">
+              <thead>
+                <tr className="border-b border-border">
+                  {["Month", "Current Market price (T)", "Change (ΔT)", "Open (O)", "High (H)", "Low (Lo)", "Volume (Vcon)", "Closing Price (L.S)"].map((h) => (
+                    <th key={h} className="kicker text-[9px] text-text-faint text-right first:text-left font-normal px-1.5 pb-2">
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {shanghai.map((q) => (
+                  <tr key={q.contract_month} className="border-b border-border-subtle last:border-0">
+                    <td className="text-[12px] font-medium text-text py-1.5 px-1.5">{q.contract_month}</td>
+                    <td className="num text-[12px] text-text text-right px-1.5">{q.price.toLocaleString("en-IN")}</td>
+                    <td className="text-right px-1.5"><DerivedCell value={q.change} signed /></td>
+                    <td className="num text-[12px] text-text-dim text-right px-1.5">{q.open.toLocaleString("en-IN")}</td>
+                    <td className="num text-[12px] text-text-dim text-right px-1.5">{q.high.toLocaleString("en-IN")}</td>
+                    <td className="num text-[12px] text-text-dim text-right px-1.5">{q.low.toLocaleString("en-IN")}</td>
+                    <td className="num text-[12px] text-text-dim text-right px-1.5">{q.volume.toLocaleString("en-IN")}</td>
+                    <td className="num text-[12px] text-text text-right px-1.5">{q.close.toLocaleString("en-IN")}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {physical.locations.map((loc) => (
-              <div key={loc.location}>
-                <p className="kicker text-[10px] text-text-dim mb-1">
-                  {loc.location}
-                  {loc.price_date && <span className="text-text-faint ml-2">{loc.price_date}</span>}
-                </p>
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="border-b border-border">
-                      {["Grade", "INR ₹", "USD $"].map((h) => (
-                        <th key={h} className="kicker text-[9px] text-text-faint text-right first:text-left font-normal px-1 pb-1">
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {loc.rows.map((r) => (
-                      <tr key={r.grade} className="border-b border-border-subtle last:border-0">
-                        <td className="text-[12px] text-text py-1 px-1">{r.grade}</td>
-                        <td className="num text-[12px] text-text text-right px-1">{r.inr.toLocaleString("en-IN")}</td>
-                        <td className="num text-[12px] text-text-dim text-right px-1">{r.usd != null ? r.usd.toFixed(2) : "—"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ))}
+
+          <div className="bg-bg-raised border border-border p-4 overflow-x-auto">
+            <h3 className="kicker text-[11px] text-tsr20 mb-2">Open Interest · Shanghai</h3>
+            <table className="w-full min-w-[420px] border-collapse">
+              <thead>
+                <tr className="border-b border-border">
+                  {["Month", "Open Interest", "Change in OI", "% change in price", "Prev OI"].map((h) => (
+                    <th key={h} className="kicker text-[9px] text-text-faint text-right first:text-left font-normal px-1.5 pb-2">
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {shanghai.map((q) => (
+                  <tr key={q.contract_month} className="border-b border-border-subtle last:border-0">
+                    <td className="text-[12px] font-medium text-text py-1.5 px-1.5">{q.contract_month}</td>
+                    <td className="num text-[12px] text-text text-right px-1.5">{q.open_interest.toLocaleString("en-IN")}</td>
+                    <td className="text-right px-1.5"><DerivedCell value={q.oi_change} signed /></td>
+                    <td className="text-right px-1.5"><DerivedCell value={q.price_change_pct} suffix="%" /></td>
+                    <td className="num text-[12px] text-text-dim text-right px-1.5">{q.prev_open_interest.toLocaleString("en-IN")}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-          <p className="kicker text-[8px] text-text-faint mt-2">
-            Official daily spot sheet, refreshed a few times a day. Compare against the SGX front month above — that futures-vs-physical gap (the basis) is what physical desks trade against.
-          </p>
         </div>
       )}
       </div>

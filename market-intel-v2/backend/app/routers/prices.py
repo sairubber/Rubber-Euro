@@ -34,10 +34,17 @@ def get_board(db: Session = Depends(get_db)):
         .order_by(FuturesQuote.month_order.asc())
         .all()
     )
+    shanghai = (
+        db.query(FuturesQuote)
+        .filter(FuturesQuote.market_tag == "SHNR")
+        .order_by(FuturesQuote.month_order.asc())
+        .all()
+    )
     fx = db.query(FxRate).order_by(FxRate.pair.asc()).all()
     return {
         "sgx_synced_at": get_sgx_sync_status(),
         "quotes": [quote_out(q) for q in quotes],
+        "shanghai": [quote_out(q) for q in shanghai],
         "fx": [
             {
                 "pair": r.pair,
