@@ -484,7 +484,7 @@ export default function Prices() {
 
   // Board and FX strip refetch every 15s; the charts themselves are
   // TradingView embeds and stream on their own.
-  const { data: board, isLoading } = useQuery({ queryKey: ["price-board"], queryFn: api.getPriceBoard, refetchInterval: 15_000 });
+  const { data: board, isLoading } = useQuery({ queryKey: ["price-board"], queryFn: api.getPriceBoard, refetchInterval: 10_000 });
   const { data: tsrLive } = useQuery({ queryKey: ["ticks", "TSR20_LIVE"], queryFn: () => api.getTicks("TSR20_LIVE", 24), refetchInterval: 30_000 });
   const { data: tsrHistory } = useQuery({ queryKey: ["tsr20-history"], queryFn: () => api.getTsr20History(365), staleTime: 900_000 });
   const { data: tsrLevels } = useQuery({ queryKey: ["levels", "TSR20"], queryFn: () => api.getLevels("TSR20"), refetchInterval: 30_000 });
@@ -534,7 +534,7 @@ export default function Prices() {
         <div>
           <h2 className="headline text-2xl font-bold text-text">Price Desk</h2>
           <p className="text-[12px] text-text-faint mt-0.5">
-            SGX TSR20 — auto-updated on every $9 move, else hourly from 05:30 IST open; L.S set daily at open · real-time FX · rule-based support &amp; resistance
+            SGX TSR20 — live, applied on every poll · real-time FX · rule-based support &amp; resistance
           </p>
         </div>
         <div className="flex items-center gap-3">

@@ -396,14 +396,13 @@ def start_scheduler() -> None:
         replace_existing=True,
     )
 
-    # Poll SGX every 2 minutes — the tightest sensible cadence against a
-    # source that itself refreshes ~10-min delayed (real-time SGX is a paid
-    # exchange license; no free API anywhere carries it faster — the
-    # aggregators all redistribute this same delayed feed). The $9-move /
-    # hourly-slot board rules live in sync_sgx_quotes, not in this cadence.
+    # Poll SGX every minute and apply every pass straight to the board — the
+    # only latency left is the source's own (SGX's free feed is ~10-min
+    # delayed by the exchange; real-time is a paid license, and every free
+    # aggregator redistributes this same delayed feed).
     _scheduler.add_job(
         run_sgx_job,
-        IntervalTrigger(minutes=2, timezone=IST),
+        IntervalTrigger(minutes=1, timezone=IST),
         id="sgx_job",
         replace_existing=True,
     )

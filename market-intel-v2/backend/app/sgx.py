@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import logging
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 _front_history_cache: dict[int, tuple[float, list[dict]]] = {}
 from zoneinfo import ZoneInfo
@@ -36,12 +36,10 @@ from app.prices import detect_level_breaks, record_tick_if_moved
 
 IST_TZ = ZoneInfo("Asia/Kolkata")
 
-# The board's price column follows the desk rule: apply immediately on a $9+
-# move, otherwise on the hourly slots anchored to the 05:30 IST market open
-# (05:30, 06:30, 07:30, ...). The previous-day closing price (L.S) is set
-# once per day, at the 05:30 open.
-PRICE_MOVE_THRESHOLD = 9.0
-OPEN_HOUR, OPEN_MINUTE = 5, 30
+# No gating: every poll applies straight to the board — the only latency is
+# the source's own (~10-min delayed feed, polled every minute). The
+# previous-day closing price (L.S) is still set once per day because that is
+# what the column MEANS, not a throttle.
 
 logger = logging.getLogger("market_intel")
 
@@ -59,21 +57,11 @@ MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "
 BOARD_MONTHS = 4
 
 _last_sync_at: datetime | None = None
-_last_applied_slot: datetime | None = None  # last hourly slot the board price took
 _close_set_on: str | None = None  # IST date the L.S column was last set
 
 
 def get_sgx_sync_status() -> str | None:
     return _last_sync_at.isoformat() if _last_sync_at else None
-
-
-def current_slot(now_ist: datetime) -> datetime:
-    """Latest 05:30-anchored hourly slot at or before `now_ist`."""
-    anchor = now_ist.replace(hour=OPEN_HOUR, minute=OPEN_MINUTE, second=0, microsecond=0)
-    if now_ist < anchor:
-        anchor -= timedelta(days=1)
-    hours = int((now_ist - anchor).total_seconds() // 3600)
-    return anchor + timedelta(hours=hours)
 
 
 def _pick(row: dict, *keys: str) -> float | None:
@@ -161,34 +149,27 @@ def get_front_history(days: int = 90) -> list[dict]:
 
 
 def sync_sgx_quotes(db: Session, force: bool = False) -> int:
-    """Pull the SGX board and apply it under the desk rules. Returns rows
+    """Pull the SGX board and apply it straight through. Returns rows
     touched.
 
-    - Price (T): applied immediately when it moved $9+ from the shown price,
-      otherwise on the hourly 05:30-IST-anchored slots (05:30, 06:30, ...) —
-      the mandatory hourly update. `force=True` (the Sync-now button) applies
-      it regardless.
-    - O/H/L/Volume/OI: session-cumulative numbers, refreshed every pass.
-    - Closing Price (L.S): previous day's settlement, set once per IST day at
-      the 05:30 open (or first pass after it).
+    - Price (T) and O/H/L/Volume/OI: applied on EVERY pass, no gating — the
+      board shows exactly what the feed shows, as soon as we see it.
+    - Closing Price (L.S): previous day's settlement, set once per IST day —
+      that is the column's meaning, not a throttle.
     - Every pass also appends the front-month price to the "TSR20_LIVE"
-      series when it changed at all — that's the live chart line, independent
-      of the board's $9 gate.
+      series when it changed — the live chart line.
     """
-    global _last_sync_at, _last_applied_slot, _close_set_on
+    global _last_sync_at, _close_set_on
     rows = fetch_sgx_rows()
     if not rows:
         return 0
 
     now_ist = datetime.now(IST_TZ)
-    slot = current_slot(now_ist)
-    hourly_due = _last_applied_slot is None or slot > _last_applied_slot
     today_ist = now_ist.date().isoformat()
     close_due = _close_set_on != today_ist
 
     synced_months: list[str] = []
     updated = 0
-    price_applied = False
     for row in rows:
         ym = row["delivery-month"]  # "2026-08"
         year, month = int(ym[:4]), int(ym[5:7])
@@ -208,7 +189,6 @@ def sync_sgx_quotes(db: Session, force: bool = False) -> int:
         if q is None:
             q = FuturesQuote(market_tag="TSR20", contract_month=label, month_order=0, price=price)
             db.add(q)
-            price_applied = True
 
         new_oi = _pick(row, "open-interest")
         if new_oi is not None and q.open_interest and new_oi != q.open_interest:
@@ -218,10 +198,7 @@ def sync_sgx_quotes(db: Session, force: bool = False) -> int:
             q.open_interest = new_oi
 
         q.month_order = year * 12 + month  # sorts correctly across year end
-        if force or not q.price or abs(price - q.price) >= PRICE_MOVE_THRESHOLD or hourly_due:
-            if price != q.price:
-                q.price = price
-            price_applied = True
+        q.price = price
         q.open = _pick(row, "session-open") or q.open
         q.high = _pick(row, "session-traded-high") or q.high
         q.low = _pick(row, "session-traded-low") or q.low
@@ -230,8 +207,6 @@ def sync_sgx_quotes(db: Session, force: bool = False) -> int:
             q.close = close
         updated += 1
 
-    if price_applied:
-        _last_applied_slot = slot
     if close_due:
         _close_set_on = today_ist
 
