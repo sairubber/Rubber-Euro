@@ -29,7 +29,7 @@ HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/126.0",
     "Referer": "https://finance.sina.com.cn",
 }
-BOARD_MONTHS = 4
+BOARD_MONTHS = 5
 
 MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
@@ -95,6 +95,12 @@ def fetch_shanghai_rows() -> list[dict]:
                 "trade_date": f[17] if len(f) > 17 else "",
             }
         )
+    # Skip the contract already inside its delivery month (e.g. Jul while
+    # July runs) — it is illiquid and days from expiry; the board starts at
+    # the next full month.
+    today = date.today()
+    current_ym = today.year * 12 + today.month
+    rows = [r for r in rows if r["month_order"] > current_ym]
     rows.sort(key=lambda r: r["month_order"])
     return rows[:BOARD_MONTHS]
 

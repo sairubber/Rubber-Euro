@@ -8,6 +8,7 @@ from app.database import get_db
 from app.models import FuturesQuote, FxRate, LevelEvent, PhysicalPrice, PriceTick
 from app.prices import compute_levels, get_eurusd_history, get_fx_intraday, iso_utc, quote_out, refresh_fx_rates, upsert_quote
 from app.sgx import get_front_history, get_sgx_sync_status, sync_sgx_quotes
+from app.shanghai import get_shanghai_sync_status
 
 router = APIRouter(tags=["prices"])
 
@@ -43,6 +44,7 @@ def get_board(db: Session = Depends(get_db)):
     fx = db.query(FxRate).order_by(FxRate.pair.asc()).all()
     return {
         "sgx_synced_at": get_sgx_sync_status(),
+        "shanghai_synced_at": get_shanghai_sync_status(),
         "quotes": [quote_out(q) for q in quotes],
         "shanghai": [quote_out(q) for q in shanghai],
         "fx": [

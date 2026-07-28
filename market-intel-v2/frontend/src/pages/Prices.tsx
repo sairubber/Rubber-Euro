@@ -660,7 +660,20 @@ export default function Prices() {
       {shanghai.length > 0 && (
         <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_1fr] gap-4 items-stretch">
           <div className="bg-bg-raised border border-border p-4 overflow-x-auto">
-            <h3 className="kicker text-[11px] text-tsr20 mb-2">Shanghai TSR20 · INE NR (CNY/tonne)</h3>
+            <div className="flex items-baseline justify-between flex-wrap gap-2 mb-2">
+              <h3 className="kicker text-[11px] text-tsr20">Shanghai TSR20 · INE NR (CNY/tonne)</h3>
+              {board?.shanghai_synced_at && (
+                <span className="kicker text-[9px] text-text-faint flex items-center gap-1.5">
+                  <span className="relative inline-flex h-1.5 w-1.5">
+                    <span className="pulse-ring absolute inline-flex h-1.5 w-1.5 text-tsr20" />
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-tsr20" />
+                  </span>
+                  Prices delayed (Sina feed) · Last price fetched{" "}
+                  {new Date(board.shanghai_synced_at).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", second: "2-digit" })}{" "}
+                  IST
+                </span>
+              )}
+            </div>
             <table className="w-full min-w-[640px] border-collapse">
               <thead>
                 <tr className="border-b border-border">

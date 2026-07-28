@@ -53,8 +53,9 @@ HEADERS = {
 }
 MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
 
-# The board mirrors the sheet: the first four delivery months.
-BOARD_MONTHS = 4
+# The board shows the first five delivery months (through December from an
+# August front).
+BOARD_MONTHS = 5
 
 _last_sync_at: datetime | None = None
 _close_set_on: str | None = None  # IST date the L.S column was last set
