@@ -47,10 +47,10 @@ Pure client-side calculator, no data feed.
 
 ## Tier 2 — Build next (free data exists, more work)
 
-### 7. Warehouse Stocks tab
-- SHFE weekly warehouse stock report (natural rubber + TSR20 warrants) — public on shfe.com.cn, scrapeable weekly
-- Chart stock level vs SHFE price overlay
-- Qingdao bonded stocks are paid (Mysteel) — show SHFE only, honestly labelled
+### 7. Warehouse Stocks tab — BUILT (2026-07-29)
+- INE NR (TSR20) on-warrant stocks, DAILY, via East Money datacenter API (SHFE/INE sites WAF-block direct scraping)
+- Live at /desk/stocks. RU (whole-latex SHFE contract) deliberately excluded — TSR20 only
+- Qingdao bonded stocks are paid (Mysteel) — not shown rather than estimated
 
 ### 8. Vessel Watch tab (live AIS map)
 - aisstream.io — free websocket AIS feed
