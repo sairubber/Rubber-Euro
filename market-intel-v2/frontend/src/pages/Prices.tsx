@@ -14,7 +14,7 @@ import { api } from "@/lib/api";
 import { SHOW_EURUSD } from "@/lib/markets";
 import { cn, relativeTime } from "@/lib/utils";
 import { FeedSkeleton } from "@/components/ui/Skeleton";
-import type { FuturesQuote, LevelEventRecord, PriceCandle, PriceLevel, PriceTickRecord, QuoteUpdate } from "@/lib/types";
+import type { FuturesQuote, LevelEventRecord, PriceCandle, PriceLevel, PriceTickRecord } from "@/lib/types";
 
 /** The desk board: live charts, rule-based support/resistance with the
  * reason each level qualifies, and the same two tables the desk keeps in
@@ -23,37 +23,11 @@ import type { FuturesQuote, LevelEventRecord, PriceCandle, PriceLevel, PriceTick
  * lands a tick, and ticks are what the intraday chart and the "proven"
  * levels are computed from. */
 
-// ── Editable cell ────────────────────────────────────────────────────────────
+// ── Board cell (read-only — the SGX feed is the single source of truth;
+// manual edits were removed 2026-07-29 at the desk's request) ─────────────
 
-function EditCell({
-  value,
-  onCommit,
-  decimals = 0,
-}: {
-  value: number;
-  onCommit: (v: number) => void;
-  decimals?: number;
-}) {
-  const [draft, setDraft] = useState<string | null>(null);
-  const shown = draft ?? value.toFixed(decimals);
-  return (
-    <input
-      type="number"
-      value={shown}
-      step={decimals ? 10 ** -decimals : 1}
-      onChange={(e) => setDraft(e.target.value)}
-      onFocus={(e) => e.target.select()}
-      onBlur={() => {
-        if (draft !== null && draft !== "" && Number(draft) !== value) onCommit(Number(draft));
-        setDraft(null);
-      }}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-        if (e.key === "Escape") setDraft(null);
-      }}
-      className="num w-full bg-transparent text-right text-[12px] text-text px-1 py-0.5 border border-transparent hover:border-border-subtle focus:border-accent focus:outline-none transition-colors [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
-    />
-  );
+function ReadCell({ value, decimals = 0 }: { value: number; decimals?: number }) {
+  return <span className="num block w-full text-right text-[12px] text-text px-1 py-0.5">{value.toFixed(decimals)}</span>;
 }
 
 function DerivedCell({ value, signed = false, suffix = "" }: { value: number; signed?: boolean; suffix?: string }) {
@@ -505,17 +479,6 @@ export default function Prices() {
     enabled: SHOW_EURUSD,
   });
 
-  const mutation = useMutation({
-    mutationFn: (payload: QuoteUpdate) => api.putQuote(payload),
-    onSuccess: () => {
-      // A committed edit can move the front month $10+ — everything derived
-      // from the board (ticks, proven levels, pivots) recomputes right away.
-      queryClient.invalidateQueries({ queryKey: ["price-board"] });
-      queryClient.invalidateQueries({ queryKey: ["ticks", "TSR20"] });
-      queryClient.invalidateQueries({ queryKey: ["levels", "TSR20"] });
-    },
-  });
-
   const sgxSync = useMutation({
     mutationFn: api.refreshSgx,
     onSuccess: () => {
@@ -533,9 +496,6 @@ export default function Prices() {
   const quotes = board?.quotes ?? [];
   const shanghai = board?.shanghai ?? [];
   const fx = board?.fx ?? [];
-
-  const commit = (q: FuturesQuote, field: keyof QuoteUpdate) => (v: number) =>
-    mutation.mutate({ market_tag: "TSR20", contract_month: q.contract_month, [field]: v });
 
   // SGX's own chart series (daily settlements, same data the exchange's
   // product chart plots) with today's live ticks appended on the end,
@@ -624,13 +584,13 @@ export default function Prices() {
               {quotes.map((q) => (
                 <tr key={q.contract_month} className="border-b border-border-subtle last:border-0">
                   <td className="text-[12px] font-medium text-text py-1.5 px-1.5">{q.contract_month}</td>
-                  <td className="w-24"><EditCell value={q.price} onCommit={commit(q, "price")} /></td>
+                  <td className="w-24"><ReadCell value={q.price} /></td>
                   <td className="text-right px-1.5"><DerivedCell value={q.change} signed /></td>
-                  <td className="w-20"><EditCell value={q.open} onCommit={commit(q, "open")} /></td>
-                  <td className="w-20"><EditCell value={q.high} onCommit={commit(q, "high")} /></td>
-                  <td className="w-20"><EditCell value={q.low} onCommit={commit(q, "low")} /></td>
-                  <td className="w-20"><EditCell value={q.volume} onCommit={commit(q, "volume")} /></td>
-                  <td className="w-24"><EditCell value={q.close} onCommit={commit(q, "close")} /></td>
+                  <td className="w-20"><ReadCell value={q.open} /></td>
+                  <td className="w-20"><ReadCell value={q.high} /></td>
+                  <td className="w-20"><ReadCell value={q.low} /></td>
+                  <td className="w-20"><ReadCell value={q.volume} /></td>
+                  <td className="w-24"><ReadCell value={q.close} /></td>
                 </tr>
               ))}
             </tbody>
@@ -653,8 +613,8 @@ export default function Prices() {
               {quotes.map((q) => (
                 <tr key={q.contract_month} className="border-b border-border-subtle last:border-0">
                   <td className="text-[12px] font-medium text-text py-1.5 px-1.5">{q.contract_month}</td>
-                  <td className="w-24"><EditCell value={q.open_interest} onCommit={commit(q, "open_interest")} /></td>
-                  <td className="w-24"><EditCell value={q.oi_change} onCommit={commit(q, "oi_change")} /></td>
+                  <td className="w-24"><ReadCell value={q.open_interest} /></td>
+                  <td className="w-24"><ReadCell value={q.oi_change} /></td>
                   <td className="text-right px-1.5"><DerivedCell value={q.price_change_pct} suffix="%" /></td>
                   <td className="text-right px-1.5"><DerivedCell value={q.prev_open_interest} /></td>
                 </tr>

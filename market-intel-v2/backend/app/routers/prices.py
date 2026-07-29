@@ -1,30 +1,15 @@
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import FuturesQuote, FxRate, LevelEvent, PhysicalPrice, PriceTick
-from app.prices import compute_levels, get_eurusd_history, get_fx_intraday, iso_utc, quote_out, refresh_fx_rates, upsert_quote
+from app.prices import compute_levels, get_eurusd_history, get_fx_intraday, iso_utc, quote_out, refresh_fx_rates
 from app.sgx import get_front_history, get_sgx_price_as_of, get_sgx_sync_status, sync_sgx_quotes
 from app.shanghai import get_shanghai_sync_status, sync_shanghai_quotes
 
 router = APIRouter(tags=["prices"])
-
-
-class QuoteIn(BaseModel):
-    market_tag: str = "TSR20"
-    contract_month: str
-    month_order: int | None = None
-    price: float | None = None
-    open: float | None = None
-    high: float | None = None
-    low: float | None = None
-    volume: float | None = None
-    close: float | None = None
-    open_interest: float | None = None
-    oi_change: float | None = None
 
 
 @router.get("/prices/board")
@@ -61,12 +46,9 @@ def get_board(db: Session = Depends(get_db)):
     }
 
 
-@router.put("/prices/quote")
-def put_quote(payload: QuoteIn, db: Session = Depends(get_db)):
-    if payload.market_tag != "TSR20":
-        raise HTTPException(status_code=400, detail="Only the TSR20 board is editable")
-    q = upsert_quote(db, payload.model_dump())
-    return quote_out(q)
+# The PUT /prices/quote manual-edit endpoint was removed 2026-07-29 at the
+# desk's request — the SGX feed is the single source of truth, and an open
+# write endpoint with no consumer was pure attack surface.
 
 
 @router.get("/prices/ticks/{market_tag}")
