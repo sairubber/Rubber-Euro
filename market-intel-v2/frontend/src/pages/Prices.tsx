@@ -472,8 +472,10 @@ const FX_LABELS: Record<string, string> = {
   CNYUSD: "CNYUSD",
   USDIDR: "USDIDR",
   USDCFA: "USDCFA",
+  USDINR: "USDINR",
+  USDTHB: "USDTHB",
 };
-const FX_DECIMALS: Record<string, number> = { EURUSD: 5, GBPUSD: 5, CNYUSD: 4, USDIDR: 2, USDCFA: 2 };
+const FX_DECIMALS: Record<string, number> = { EURUSD: 5, GBPUSD: 5, CNYUSD: 4, USDIDR: 2, USDCFA: 2, USDINR: 3, USDTHB: 3 };
 
 export default function Prices() {
   const queryClient = useQueryClient();

@@ -90,9 +90,17 @@ export default function ClimateWatch() {
               </div>
 
               {c && (
-                <div className="flex items-center gap-1.5 text-xs text-text-dim mb-2">
+                <div className="flex items-center gap-1.5 text-xs text-text-dim mb-2 flex-wrap">
                   <CloudRain size={12} className="text-text-faint" />
                   {c.rainfall_mm} mm today · {c.rainfall_7d_avg_mm} mm 7-day avg
+                  {c.rainfall_mm > 2 && (
+                    <span
+                      className="kicker text-[8px] text-amber border border-amber/25 px-1.5 py-0.5"
+                      title="Rain above ~2 mm typically stops the morning tapping round — a trade rule of thumb, not an official figure."
+                    >
+                      No-tapping rain
+                    </span>
+                  )}
                 </div>
               )}
 

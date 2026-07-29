@@ -29,7 +29,7 @@ TICK_THRESHOLD = {"TSR20": 9.0, "EURUSD": 0.0010}
 # Bucket width used when deciding that two touches were "the same level".
 LEVEL_BUCKET = {"TSR20": 10.0, "EURUSD": 0.0050}
 
-FX_PAIRS = ("EURUSD", "GBPUSD", "CNYUSD", "USDIDR", "USDCFA")
+FX_PAIRS = ("EURUSD", "GBPUSD", "CNYUSD", "USDIDR", "USDCFA", "USDINR", "USDTHB")
 
 
 def iso_utc(dt: datetime | None) -> str | None:
@@ -147,6 +147,8 @@ YAHOO_SYMBOLS = {
     "CNYUSD": "CNYUSD=X",
     "USDIDR": "IDR=X",
     "USDCFA": "XOF=X",  # CFA franc (BCEAO)
+    "USDINR": "INR=X",
+    "USDTHB": "THB=X",  # Thai Baht — the origin-side currency for STR20/Hat Yai
 }
 
 
@@ -158,6 +160,8 @@ GOOGLE_FX_SLUGS = {
     "CNYUSD": ("CNY-USD", "CNY / USD"),
     "USDIDR": ("USD-IDR", "USD / IDR"),
     "USDCFA": ("USD-XOF", "USD / XOF"),
+    "USDINR": ("USD-INR", "USD / INR"),
+    "USDTHB": ("USD-THB", "USD / THB"),
 }
 
 
@@ -215,6 +219,8 @@ def _fx_rates_fallback() -> dict[str, float | None]:
         "CNYUSD": usd_per("CNY"),
         "USDIDR": rates.get("IDR"),
         "USDCFA": rates.get("XOF"),
+        "USDINR": rates.get("INR"),
+        "USDTHB": rates.get("THB"),
     }
 
 

@@ -11,6 +11,10 @@ const Archive = lazy(() => import("@/pages/Archive"));
 const PortTraffic = lazy(() => import("@/pages/PortTraffic"));
 const TradeFlow = lazy(() => import("@/pages/TradeFlow"));
 const ClimateWatch = lazy(() => import("@/pages/ClimateWatch"));
+const DeskBasis = lazy(() => import("@/pages/DeskBasis"));
+const DeskCurve = lazy(() => import("@/pages/DeskCurve"));
+const OriginDesk = lazy(() => import("@/pages/OriginDesk"));
+const LandedCost = lazy(() => import("@/pages/LandedCost"));
 
 function PageFallback() {
   return (
@@ -59,6 +63,38 @@ export default function App() {
           element={
             <Suspense fallback={<PageFallback />}>
               <ClimateWatch />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/desk/basis"
+          element={
+            <Suspense fallback={<PageFallback />}>
+              <DeskBasis />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/desk/curve"
+          element={
+            <Suspense fallback={<PageFallback />}>
+              <DeskCurve />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/desk/origin"
+          element={
+            <Suspense fallback={<PageFallback />}>
+              <OriginDesk />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/desk/landed-cost"
+          element={
+            <Suspense fallback={<PageFallback />}>
+              <LandedCost />
             </Suspense>
           }
         />

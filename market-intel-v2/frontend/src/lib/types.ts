@@ -293,3 +293,50 @@ export interface StatusRecord {
   last_scrape_added: number;
   last_climate_at: string | null;
 }
+
+// --- Desk (basis, spreads, origin) ---
+
+export interface BasisPhysical {
+  location: string;
+  grade: string;
+  label: string;
+  kind: "block" | "sheet";
+  usd_mt: number;
+  price_date: string;
+  basis: number;
+}
+
+export interface BasisSpread {
+  label: string;
+  note: string;
+  value: number;
+}
+
+export interface BasisHistoryPoint {
+  date: string;
+  sgx_settle: number;
+  smr20?: number;
+  isnr20?: number;
+  rss3?: number;
+  basis_smr20?: number;
+  basis_isnr20?: number;
+  basis_rss3?: number;
+}
+
+export interface BasisSnapshot {
+  front_month: string;
+  sgx_price: number;
+  sgx_close: number;
+  sgx_price_as_of: string | null;
+  unit: string;
+  physicals: BasisPhysical[];
+  spreads: BasisSpread[];
+  history: BasisHistoryPoint[];
+  source: string;
+}
+
+export interface PhysicalHistoryPoint {
+  price_date: string;
+  inr: number;
+  usd: number | null;
+}
