@@ -14,7 +14,6 @@ interface Inputs {
   dutyPct: number; // % of CIF
   clearing: number; // USD/tonne — port, CHA, handling
   trucking: number; // USD/tonne — inland leg
-  usdinr: number;
 }
 
 const DEFAULTS: Inputs = {
@@ -24,7 +23,6 @@ const DEFAULTS: Inputs = {
   dutyPct: 25,
   clearing: 25,
   trucking: 30,
-  usdinr: 0,
 };
 
 function Field({
@@ -60,14 +58,10 @@ function Field({
 export default function LandedCost() {
   const { data: board } = useQuery({ queryKey: ["price-board"], queryFn: api.getPriceBoard, staleTime: 60_000 });
   const [inputs, setInputs] = useState<Inputs>(DEFAULTS);
-  const [inrTouched, setInrTouched] = useState(false);
 
-  const liveInr = board?.fx.find((f) => f.pair === "USDINR")?.rate ?? 0;
   const sgxFront = board?.quotes[0]?.price;
-  const usdinr = inrTouched ? inputs.usdinr : liveInr || inputs.usdinr;
 
   const set = (k: keyof Inputs) => (v: number) => {
-    if (k === "usdinr") setInrTouched(true);
     setInputs((s) => ({ ...s, [k]: v }));
   };
 
@@ -110,7 +104,6 @@ export default function LandedCost() {
           <Field label="Import duty" suffix="% of CIF" value={inputs.dutyPct} onChange={set("dutyPct")} step={0.5} />
           <Field label="Port + clearing charges" suffix="USD/tonne" value={inputs.clearing} onChange={set("clearing")} />
           <Field label="Inland trucking" suffix="USD/tonne" value={inputs.trucking} onChange={set("trucking")} />
-          <Field label="USD/INR" suffix={liveInr && !inrTouched ? "live rate" : "manual"} value={usdinr} onChange={set("usdinr")} step={0.01} />
         </div>
 
         <div>
@@ -136,16 +129,12 @@ export default function LandedCost() {
               <span className="text-right">
                 <span className="num text-2xl font-bold text-text block">${out.landed.toFixed(0)}<span className="text-xs font-normal text-text-faint">/tonne</span></span>
                 <span className="num text-[11px] text-text-dim block">${(out.landed / 1000).toFixed(3)}/kg</span>
-                {usdinr > 0 && (
-                  <span className="num text-[11px] text-text-dim block">₹{((out.landed * usdinr) / 1000).toFixed(1)}/kg</span>
-                )}
               </span>
             </div>
           </div>
           <p className="kicker text-[9px] text-text-faint mt-3 leading-relaxed">
             Insurance is applied on C&amp;F, duty on CIF — the standard customs build-up. If your duty is specific
-            (₹/kg) rather than ad-valorem, set duty to 0 and fold it into clearing charges. USD/INR prefills from the
-            desk's live FX board when available.
+            (per-kg) rather than ad-valorem, set duty to 0 and fold it into clearing charges. All figures in USD.
           </p>
         </div>
       </div>

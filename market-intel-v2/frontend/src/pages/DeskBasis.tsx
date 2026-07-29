@@ -73,23 +73,44 @@ export default function DeskBasis() {
         </p>
       </header>
 
-      {/* Futures leg */}
-      <div className="border border-border-subtle bg-surface p-5 flex flex-wrap items-baseline gap-x-8 gap-y-2">
-        <div>
-          <p className="kicker text-[10px] text-text-faint mb-1">Futures leg — SGX TSR20 ({data.front_month})</p>
-          <p className="num text-3xl font-bold text-text">
-            ${data.sgx_price.toFixed(0)}
-            <span className="text-sm font-normal text-text-faint ml-1">/tonne</span>
-          </p>
+      {/* Futures legs — the two exchanges where TSR20 actually trades */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="border border-border-subtle bg-surface p-5 flex flex-wrap items-baseline gap-x-8 gap-y-2">
+          <div>
+            <p className="kicker text-[10px] text-text-faint mb-1">Futures leg — SGX TSR20 ({data.front_month})</p>
+            <p className="num text-3xl font-bold text-text">
+              ${data.sgx_price.toFixed(0)}
+              <span className="text-sm font-normal text-text-faint ml-1">/tonne</span>
+            </p>
+          </div>
+          <div>
+            <p className="kicker text-[10px] text-text-faint mb-1">Last settlement</p>
+            <p className="num text-xl text-text-dim">${data.sgx_close.toFixed(0)}</p>
+          </div>
+          {data.sgx_price_as_of && (
+            <p className="kicker text-[9px] text-text-faint w-full" title={data.sgx_price_as_of}>
+              SGX price as of {relativeTime(data.sgx_price_as_of)} · feed ~15 min delayed
+            </p>
+          )}
         </div>
-        <div>
-          <p className="kicker text-[10px] text-text-faint mb-1">Last settlement</p>
-          <p className="num text-xl text-text-dim">${data.sgx_close.toFixed(0)}</p>
-        </div>
-        {data.sgx_price_as_of && (
-          <p className="kicker text-[9px] text-text-faint ml-auto self-end" title={data.sgx_price_as_of}>
-            SGX price as of {relativeTime(data.sgx_price_as_of)} · feed ~15 min delayed
-          </p>
+
+        {data.shanghai && (
+          <div className="border border-border-subtle bg-surface p-5 flex flex-wrap items-baseline gap-x-8 gap-y-2">
+            <div>
+              <p className="kicker text-[10px] text-text-faint mb-1">Futures leg — Shanghai INE NR ({data.shanghai.front_month})</p>
+              <p className="num text-3xl font-bold text-text">
+                ${data.shanghai.usd_price.toFixed(0)}
+                <span className="text-sm font-normal text-text-faint ml-1">/tonne</span>
+              </p>
+            </div>
+            <div>
+              <p className="kicker text-[10px] text-text-faint mb-1">On-exchange</p>
+              <p className="num text-xl text-text-dim">¥{data.shanghai.cny_price.toLocaleString()}</p>
+            </div>
+            <p className="kicker text-[9px] text-text-faint w-full">
+              Converted at live CNYUSD {data.shanghai.fx_rate.toFixed(4)} for display — the exchange trades in CNY. Real-time feed.
+            </p>
+          </div>
         )}
       </div>
 
@@ -115,6 +136,12 @@ export default function DeskBasis() {
               <span className="kicker text-[9px] text-text-faint">Basis vs SGX {data.front_month}</span>
               <BasisChip value={p.basis} />
             </div>
+            {p.basis_ine !== null && (
+              <div className="mt-2 flex items-baseline justify-between">
+                <span className="kicker text-[9px] text-text-faint">vs INE (USD-converted)</span>
+                <BasisChip value={p.basis_ine} />
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -153,7 +180,10 @@ export default function DeskBasis() {
         point. SMR20 and ISNR20 are technically-specified 20 grades — the same spec family the SGX contract settles on;
         sheet grades (RSS) stay off this screen because the desk trades TSR20 only. ISNR20 is Kottayam's domestic
         market price — its premium over SGX includes India's import-duty wall, so read it as the Indian buyer's
-        alternative cost, not a pure export basis.
+        alternative cost, not a pure export basis. SGX and Shanghai INE are the only exchanges with a liquid TSR20
+        contract — Thailand and Vietnam are physical origin markets with no rubber futures exchange, and the Japan
+        (JPX-OSE) TSR20 contract carries no volume. The INE leg is converted from CNY at the live rate for comparison
+        only; INE is China's onshore bonded market, so its basis also reflects Chinese import economics.
       </div>
     </div>
   );

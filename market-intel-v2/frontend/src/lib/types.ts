@@ -304,6 +304,14 @@ export interface BasisPhysical {
   usd_mt: number;
   price_date: string;
   basis: number;
+  basis_ine: number | null;
+}
+
+export interface ShanghaiLeg {
+  front_month: string;
+  cny_price: number;
+  usd_price: number;
+  fx_rate: number;
 }
 
 export interface BasisSpread {
@@ -327,6 +335,7 @@ export interface BasisSnapshot {
   sgx_close: number;
   sgx_price_as_of: string | null;
   unit: string;
+  shanghai: ShanghaiLeg | null;
   physicals: BasisPhysical[];
   spreads: BasisSpread[];
   history: BasisHistoryPoint[];

@@ -129,7 +129,7 @@ export default function OriginDesk() {
       {physical && physical.locations.length > 0 && (
         <div>
           <p className="kicker text-[10px] text-text-faint mb-3">
-            TSR20-spec physical matrix — {physical.unit ?? "per 100 kg"} · {physical.source ?? "Rubber Board of India"}
+            TSR20-spec physical matrix — USD/tonne · {physical.source ?? "Rubber Board of India"}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {physical.locations
@@ -145,18 +145,18 @@ export default function OriginDesk() {
                   <thead>
                     <tr className="kicker text-[9px] text-text-faint border-b border-border-subtle">
                       <th className="text-left py-1 font-normal">Grade</th>
-                      <th className="text-right py-1 font-normal">₹/100kg</th>
-                      <th className="text-right py-1 font-normal">$/100kg</th>
+                      <th className="text-right py-1 font-normal">$/tonne</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {loc.rows.map((r) => (
-                      <tr key={r.grade} className="border-b border-border-subtle/60 last:border-0">
-                        <td className="py-1 text-text-dim">{r.grade}</td>
-                        <td className="py-1 text-right num text-text">{r.inr.toLocaleString("en-IN")}</td>
-                        <td className="py-1 text-right num text-text-dim">{r.usd?.toFixed(1) ?? "—"}</td>
-                      </tr>
-                    ))}
+                    {loc.rows
+                      .filter((r) => r.usd !== null)
+                      .map((r) => (
+                        <tr key={r.grade} className="border-b border-border-subtle/60 last:border-0">
+                          <td className="py-1 text-text-dim">{r.grade}</td>
+                          <td className="py-1 text-right num text-text">{((r.usd as number) * 10).toFixed(0)}</td>
+                        </tr>
+                      ))}
                   </tbody>
                 </table>
               </div>

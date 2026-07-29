@@ -16,7 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import FuturesQuote, PhysicalPrice
+from app.models import FuturesQuote, FxRate, PhysicalPrice
 from app.sgx import get_front_history, get_sgx_price_as_of
 
 router = APIRouter(tags=["desk"])
@@ -65,6 +65,25 @@ def get_basis(days: int = 90, db: Session = Depends(get_db)):
     if front is None:
         raise HTTPException(status_code=503, detail="SGX board is empty — no futures leg to compute basis against")
 
+    # Shanghai INE NR front month, converted to USD at the live CNYUSD rate
+    # purely for display — the CNY figure travels alongside so nothing is
+    # hidden behind the conversion.
+    sh_front = (
+        db.query(FuturesQuote)
+        .filter(FuturesQuote.market_tag == "SHNR")
+        .order_by(FuturesQuote.month_order.asc())
+        .first()
+    )
+    cnyusd = db.query(FxRate).filter(FxRate.pair == "CNYUSD").first()
+    shanghai = None
+    if sh_front is not None and cnyusd is not None and cnyusd.rate:
+        shanghai = {
+            "front_month": sh_front.contract_month,
+            "cny_price": sh_front.price,
+            "usd_price": round(sh_front.price * cnyusd.rate, 1),
+            "fx_rate": cnyusd.rate,
+        }
+
     physicals = []
     for spec in BASIS_SPECS:
         row = _latest_physical(db, spec["location"], spec["grade"])
@@ -77,6 +96,7 @@ def get_basis(days: int = 90, db: Session = Depends(get_db)):
                 "usd_mt": usd_mt,
                 "price_date": row.price_date,
                 "basis": round(usd_mt - front.price, 1),
+                "basis_ine": round(usd_mt - shanghai["usd_price"], 1) if shanghai else None,
             }
         )
 
@@ -125,6 +145,7 @@ def get_basis(days: int = 90, db: Session = Depends(get_db)):
         "sgx_close": front.close,
         "sgx_price_as_of": get_sgx_price_as_of(),
         "unit": "USD/tonne",
+        "shanghai": shanghai,
         "physicals": physicals,
         "spreads": spreads,
         "history": history,
