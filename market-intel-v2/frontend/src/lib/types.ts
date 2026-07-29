@@ -317,10 +317,8 @@ export interface BasisHistoryPoint {
   sgx_settle: number;
   smr20?: number;
   isnr20?: number;
-  rss3?: number;
   basis_smr20?: number;
   basis_isnr20?: number;
-  basis_rss3?: number;
 }
 
 export interface BasisSnapshot {

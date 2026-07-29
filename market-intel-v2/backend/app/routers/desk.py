@@ -23,12 +23,11 @@ router = APIRouter(tags=["desk"])
 
 # The physical quotes that make sense against a TSR20 futures leg. SMR20 and
 # ISNR20 are the Malaysian and Indian technically-specified 20 grades — the
-# same spec family the SGX contract settles on. RSS3 rides along because the
-# sheet-vs-block premium is the desk's classic grade spread.
+# same spec family the SGX contract settles on. The desk trades TSR20 only,
+# so sheet grades (RSS) deliberately stay off this screen.
 BASIS_SPECS = [
     {"location": "KualaLumpur", "grade": "SMR20", "label": "SMR20 · Kuala Lumpur", "kind": "block"},
     {"location": "Kottayam", "grade": "ISNR20", "label": "ISNR20 · Kottayam", "kind": "block"},
-    {"location": "Bangkok", "grade": "RSS3", "label": "RSS3 · Bangkok", "kind": "sheet"},
 ]
 
 
@@ -83,14 +82,6 @@ def get_basis(days: int = 90, db: Session = Depends(get_db)):
 
     by_grade = {p["grade"]: p for p in physicals}
     spreads = []
-    if "RSS3" in by_grade and "SMR20" in by_grade:
-        spreads.append(
-            {
-                "label": "RSS3 − SMR20",
-                "note": "Sheet premium over block rubber",
-                "value": round(by_grade["RSS3"]["usd_mt"] - by_grade["SMR20"]["usd_mt"], 1),
-            }
-        )
     if "ISNR20" in by_grade and "SMR20" in by_grade:
         spreads.append(
             {

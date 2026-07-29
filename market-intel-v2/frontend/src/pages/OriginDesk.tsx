@@ -10,11 +10,13 @@ import { cn } from "@/lib/utils";
  * Physical data is the Rubber Board of India's daily publication (it covers
  * Bangkok and Kuala Lumpur international sheets too). */
 
+// TSR20-spec grades only — the desk doesn't trade sheet (RSS) or latex.
 const KEY_GRADES = [
   { location: "KualaLumpur", grade: "SMR20", label: "SMR20 · Kuala Lumpur", color: "#2f6b4f" },
   { location: "Kottayam", grade: "ISNR20", label: "ISNR20 · Kottayam", color: "#2b4c7e" },
-  { location: "Bangkok", grade: "RSS3", label: "RSS3 · Bangkok", color: "#9d6f1d" },
 ];
+
+const TSR_GRADE = /ISNR|SMR|TSR|STR|SIR|SVR/i;
 
 // The classic SE Asia + India tapping calendar. Month is 1-12.
 function tappingPhase(month: number): { phase: string; tone: "bull" | "amber" | "bear"; note: string } {
@@ -116,7 +118,7 @@ export default function OriginDesk() {
       </div>
 
       {/* Key grade sparklines */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {KEY_GRADES.map((g) => (
           <GradeSparkline key={g.grade} {...g} />
         ))}
@@ -127,10 +129,13 @@ export default function OriginDesk() {
       {physical && physical.locations.length > 0 && (
         <div>
           <p className="kicker text-[10px] text-text-faint mb-3">
-            Physical price matrix — {physical.unit ?? "per 100 kg"} · {physical.source ?? "Rubber Board of India"}
+            TSR20-spec physical matrix — {physical.unit ?? "per 100 kg"} · {physical.source ?? "Rubber Board of India"}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {physical.locations.map((loc) => (
+            {physical.locations
+              .map((loc) => ({ ...loc, rows: loc.rows.filter((r) => TSR_GRADE.test(r.grade)) }))
+              .filter((loc) => loc.rows.length > 0)
+              .map((loc) => (
               <div key={loc.location} className="border border-border-subtle bg-surface p-4">
                 <div className="flex items-baseline justify-between mb-2">
                   <p className="text-sm font-medium text-text">{loc.location}</p>

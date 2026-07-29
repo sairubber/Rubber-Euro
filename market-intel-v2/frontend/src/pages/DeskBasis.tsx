@@ -11,7 +11,6 @@ import { cn, relativeTime } from "@/lib/utils";
 const BASIS_COLORS: Record<string, string> = {
   SMR20: "#2f6b4f", // house green — block rubber, same spec family as the future
   ISNR20: "#2b4c7e", // milky blue — Indian block
-  RSS3: "#9d6f1d", // smoked-sheet amber
 };
 
 function BasisChip({ value }: { value: number }) {
@@ -152,9 +151,9 @@ export default function DeskBasis() {
         {data.source}. Rubber Board publishes per 100 kg — figures here are ×10 for the $/tonne scale. Each physical
         print pairs with the most recent SGX settlement on or before its date; days without a published sheet produce no
         point. SMR20 and ISNR20 are technically-specified 20 grades — the same spec family the SGX contract settles on;
-        RSS3 is sheet rubber, so its "basis" mixes grade premium with true basis and is best read alongside the
-        RSS3&nbsp;−&nbsp;SMR20 spread. ISNR20 is Kottayam's domestic market price — its premium over SGX includes
-        India's import-duty wall, so read it as the Indian buyer's alternative cost, not a pure export basis.
+        sheet grades (RSS) stay off this screen because the desk trades TSR20 only. ISNR20 is Kottayam's domestic
+        market price — its premium over SGX includes India's import-duty wall, so read it as the Indian buyer's
+        alternative cost, not a pure export basis.
       </div>
     </div>
   );
