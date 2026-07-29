@@ -15,6 +15,7 @@ const DeskBasis = lazy(() => import("@/pages/DeskBasis"));
 const DeskCurve = lazy(() => import("@/pages/DeskCurve"));
 const OriginDesk = lazy(() => import("@/pages/OriginDesk"));
 const LandedCost = lazy(() => import("@/pages/LandedCost"));
+const WarrantStocks = lazy(() => import("@/pages/WarrantStocks"));
 
 function PageFallback() {
   return (
@@ -87,6 +88,14 @@ export default function App() {
           element={
             <Suspense fallback={<PageFallback />}>
               <OriginDesk />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/desk/stocks"
+          element={
+            <Suspense fallback={<PageFallback />}>
+              <WarrantStocks />
             </Suspense>
           }
         />

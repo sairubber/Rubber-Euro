@@ -347,3 +347,16 @@ export interface PhysicalHistoryPoint {
   inr: number;
   usd: number | null;
 }
+
+export interface WarrantStockPoint {
+  date: string;
+  tonnes: number;
+  change: number;
+}
+
+export interface WarrantStocks {
+  unit: string;
+  contract: string;
+  source: string;
+  series: WarrantStockPoint[];
+}

@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import FuturesQuote, FxRate, PhysicalPrice
 from app.sgx import get_front_history, get_sgx_price_as_of
+from app.warrants import get_nr_warrant_stocks
 
 router = APIRouter(tags=["desk"])
 
@@ -150,6 +151,19 @@ def get_basis(days: int = 90, db: Session = Depends(get_db)):
         "spreads": spreads,
         "history": history,
         "source": "Physical: Rubber Board of India daily sheets · Futures: SGX",
+    }
+
+
+@router.get("/desk/warrant-stocks")
+def warrant_stocks(days: int = 180):
+    """INE NR (TSR20) on-warrant warehouse stocks — daily tonnes + change,
+    oldest → newest. Exchange figures via East Money's public mirror."""
+    series = get_nr_warrant_stocks(days)
+    return {
+        "unit": "tonnes",
+        "contract": "INE NR (TSR20, 上期能源-20号胶)",
+        "source": "Exchange warrant figures via East Money datacenter (free public mirror)",
+        "series": series,
     }
 
 

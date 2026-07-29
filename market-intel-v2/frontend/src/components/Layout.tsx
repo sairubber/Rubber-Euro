@@ -31,6 +31,7 @@ const NAV_GROUPS = [
       { to: "/desk/basis", label: "Basis & Spreads", end: false, active: "border-tsr20 text-tsr20" },
       { to: "/desk/curve", label: "Curve", end: false, active: "border-tsr20 text-tsr20" },
       { to: "/desk/origin", label: "Origin", end: false, active: "border-accent text-accent" },
+      { to: "/desk/stocks", label: "Stocks", end: false, active: "border-tsr20 text-tsr20" },
       { to: "/desk/landed-cost", label: "Landed Cost", end: false, active: "border-accent text-accent" },
     ],
   },
