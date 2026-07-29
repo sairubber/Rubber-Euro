@@ -67,7 +67,7 @@ export default function Dashboard() {
     queries: MARKETS.map((m) => ({
       queryKey: ["latest-news", m.code],
       queryFn: () => api.getLatestNews(m.code),
-      refetchInterval: 60_000,
+      refetchInterval: 60_000, refetchIntervalInBackground: true,
       retry: false,
     })),
   });
@@ -77,7 +77,7 @@ export default function Dashboard() {
       queryKey: ["news-history", m.code],
       // Overview shows only the last 24 hours — the Archive keeps the rest.
       queryFn: () => api.getNewsHistory(m.code, { limit: 24, hours: 24 }),
-      refetchInterval: 60_000,
+      refetchInterval: 60_000, refetchIntervalInBackground: true,
     })),
   });
 

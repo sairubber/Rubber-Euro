@@ -18,6 +18,8 @@ from datetime import date, timedelta
 
 import httpx
 
+from app.netutil import get_retry
+
 logger = logging.getLogger("market_intel")
 
 API = "https://datacenter-web.eastmoney.com/api/data/v1/get"
@@ -41,7 +43,7 @@ def get_nr_warrant_stocks(days: int = 180) -> list[dict]:
 
     since = (date.today() - timedelta(days=days)).isoformat()
     try:
-        resp = httpx.get(
+        resp = get_retry(
             API,
             params={
                 "reportName": "RPT_FUTU_STOCKDATA",
@@ -56,7 +58,6 @@ def get_nr_warrant_stocks(days: int = 180) -> list[dict]:
             headers=HEADERS,
             timeout=25,
         )
-        resp.raise_for_status()
         data = (resp.json().get("result") or {}).get("data") or []
         series = [
             {

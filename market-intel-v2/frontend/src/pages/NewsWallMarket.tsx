@@ -40,7 +40,7 @@ export default function NewsWallMarket() {
     queryFn: () => api.getLatestNews(market),
     enabled: !!marketInfo,
     retry: false,
-    refetchInterval: 60_000,
+    refetchInterval: 60_000, refetchIntervalInBackground: true,
   });
 
   const { data: feed, isLoading } = useQuery({
@@ -48,7 +48,7 @@ export default function NewsWallMarket() {
     // Walls carry the last 24 hours only; older stories live in the Archive.
     queryFn: () => api.getNewsHistory(market, { limit: 60, category, hours: 24 }),
     enabled: !!marketInfo,
-    refetchInterval: 60_000,
+    refetchInterval: 60_000, refetchIntervalInBackground: true,
   });
 
   // "N new stories" pill: compare the newest id across refetches of the

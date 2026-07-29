@@ -12,7 +12,7 @@ export default function WarrantStocks() {
   const { data, isLoading } = useQuery({
     queryKey: ["warrant-stocks"],
     queryFn: () => api.getWarrantStocks(240),
-    refetchInterval: 3_600_000,
+    refetchInterval: 3_600_000, refetchIntervalInBackground: true,
   });
 
   if (isLoading) return <EmptyState loading title="Loading warrant stocks…" />;

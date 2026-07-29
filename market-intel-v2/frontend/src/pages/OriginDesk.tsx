@@ -20,7 +20,7 @@ const KEY_GRADES = [
  * each day's fetched rate) so it gets its own card instead of the
  * PhysicalPrice-backed sparkline. */
 function ThaiFobCard() {
-  const { data } = useQuery({ queryKey: ["thai-fob"], queryFn: () => api.getThaiFob(120), staleTime: 300_000 });
+  const { data } = useQuery({ queryKey: ["thai-fob"], queryFn: () => api.getThaiFob(120), staleTime: 300_000, refetchInterval: 600_000, refetchIntervalInBackground: true });
   const points = (data?.series ?? [])
     .filter((p) => p.usd_mt !== null)
     .map((p) => ({ x: p.price_date.slice(5), y: p.usd_mt as number }));
@@ -65,6 +65,7 @@ function GradeSparkline({ location, grade, label, color }: (typeof KEY_GRADES)[n
     queryKey: ["physical-history", location, grade],
     queryFn: () => api.getPhysicalHistory(location, grade, 120),
     staleTime: 300_000,
+    refetchInterval: 600_000, refetchIntervalInBackground: true,
   });
   const points = (data ?? [])
     .filter((p) => p.usd !== null)
@@ -96,8 +97,10 @@ function GradeSparkline({ location, grade, label, color }: (typeof KEY_GRADES)[n
 }
 
 export default function OriginDesk() {
-  const { data: physical, isLoading } = useQuery({ queryKey: ["physical"], queryFn: api.getPhysical, refetchInterval: 300_000 });
-  const { data: climate } = useQuery({ queryKey: ["climate"], queryFn: api.getClimate, refetchInterval: 300_000 });
+  const { data: physical, isLoading } = useQuery({ queryKey: ["physical"], queryFn: api.getPhysical, refetchInterval: 300_000, refetchIntervalInBackground: true });
+  const { data: climate } = useQuery({ queryKey: ["climate"], queryFn: api.getClimate, refetchInterval: 300_000, refetchIntervalInBackground: true });
+  // Same key as ThaiFobCard — React Query dedupes, so this costs no extra call.
+  const { data: thaiFob } = useQuery({ queryKey: ["thai-fob"], queryFn: () => api.getThaiFob(120), staleTime: 300_000, refetchInterval: 600_000, refetchIntervalInBackground: true });
 
   const month = Number(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata", month: "numeric" }));
   const season = tappingPhase(month);
@@ -169,6 +172,28 @@ export default function OriginDesk() {
             no free official feed exists, so they are absent rather than estimated.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {thaiFob?.latest?.usd_mt != null && (
+              <div className="border border-border-subtle bg-surface p-4">
+                <div className="flex items-baseline justify-between mb-2">
+                  <p className="text-sm font-medium text-text">Laem Chabang (TRA)</p>
+                  <p className="kicker text-[9px] text-text-faint">{thaiFob.latest.price_date}</p>
+                </div>
+                <table className="w-full text-[12px]">
+                  <thead>
+                    <tr className="kicker text-[9px] text-text-faint border-b border-border-subtle">
+                      <th className="text-left py-1 font-normal">Grade</th>
+                      <th className="text-right py-1 font-normal">$/tonne</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td className="py-1 text-text-dim">STR20 (FOB)</td>
+                      <td className="py-1 text-right num text-text">{thaiFob.latest.usd_mt.toFixed(0)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            )}
             {physical.locations
               .map((loc) => ({ ...loc, rows: loc.rows.filter((r) => TSR_GRADE.test(r.grade)) }))
               .filter((loc) => loc.rows.length > 0)

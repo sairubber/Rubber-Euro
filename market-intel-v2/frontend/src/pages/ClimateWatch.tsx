@@ -4,8 +4,11 @@ import { api } from "@/lib/api";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FeedRow } from "@/components/FeedRow";
 import { ClimateMap } from "@/components/ClimateMap";
+import { DeskLineChart } from "@/components/DeskLineChart";
 import { cn } from "@/lib/utils";
 import type { RiskLevel } from "@/lib/types";
+
+const MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 const RAINFALL_TOOLTIP =
   "\"Today\" is that single day's rainfall. \"7-day avg\" is the plain mean of the last 7 daily totals from Open-Meteo (today plus the 6 days before it) — no weighting or smoothing.";
@@ -23,13 +26,13 @@ function TrendIcon({ trend }: { trend: string }) {
 }
 
 export default function ClimateWatch() {
-  const { data: climate, isLoading } = useQuery({ queryKey: ["climate"], queryFn: api.getClimate, refetchInterval: 300_000 });
+  const { data: climate, isLoading } = useQuery({ queryKey: ["climate"], queryFn: api.getClimate, refetchInterval: 300_000, refetchIntervalInBackground: true });
   const { data: signals, isLoading: signalsLoading } = useQuery({
     queryKey: ["region-signals"],
     queryFn: api.getRegionSignals,
-    refetchInterval: 300_000,
+    refetchInterval: 300_000, refetchIntervalInBackground: true,
   });
-  const { data: outlook } = useQuery({ queryKey: ["market-outlook"], queryFn: api.getMarketOutlook, refetchInterval: 300_000 });
+  const { data: outlook } = useQuery({ queryKey: ["market-outlook"], queryFn: api.getMarketOutlook, refetchInterval: 300_000, refetchIntervalInBackground: true });
   const { data: alerts, isLoading: alertsLoading } = useQuery({ queryKey: ["supply-alerts"], queryFn: api.getSupplyAlerts });
 
   const climateByRegion = new Map((climate ?? []).map((c) => [c.region, c]));
@@ -124,6 +127,8 @@ export default function ClimateWatch() {
         <EmptyState title="No signal yet" description="The desk needs at least one rainfall reading per region — check back shortly." />
       )}
 
+      <SeasonalitySection />
+
       <div className="pt-6 border-t border-rule">
         <h2 className="kicker text-[11px] text-text-faint mb-1">Disruption &amp; Disease News</h2>
         <p className="text-[11px] text-text-faint mb-3">The real articles feeding the "matched reports" counts above.</p>
@@ -138,6 +143,43 @@ export default function ClimateWatch() {
             ))}
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+/** Multi-year price seasonality against the wintering calendar — INE NR
+ * (TSR20) monthly settlement means since the contract's 2019 launch. Shows
+ * whether the current year's path is normal seasonal shape or an anomaly. */
+function SeasonalitySection() {
+  const { data } = useQuery({ queryKey: ["ine-seasonality"], queryFn: api.getIneSeasonality, staleTime: 3_600_000, refetchInterval: 6 * 3_600_000, refetchIntervalInBackground: true });
+  if (!data || data.envelope.length === 0) return null;
+
+  const x = (m: number) => MONTH_ABBR[m - 1];
+  const currentByMonth = new Map(data.current_year.map((c) => [c.month, c.mean]));
+  const series = [
+    { key: "max", label: "Historical max", color: "#c9c2b4", points: data.envelope.map((e) => ({ x: x(e.month), y: e.max })) },
+    { key: "median", label: "Historical median", color: "#9d6f1d", points: data.envelope.map((e) => ({ x: x(e.month), y: e.median })) },
+    { key: "min", label: "Historical min", color: "#c9c2b4", points: data.envelope.map((e) => ({ x: x(e.month), y: e.min })) },
+    {
+      key: "current",
+      label: `${new Date().getFullYear()} so far`,
+      color: "#b3202c",
+      points: data.envelope.map((e) => ({ x: x(e.month), y: currentByMonth.get(e.month) })),
+    },
+  ];
+
+  return (
+    <div className="pt-6 border-t border-rule">
+      <h2 className="kicker text-[11px] text-text-faint mb-1">Price Seasonality vs the Wintering Calendar</h2>
+      <p className="text-[11px] text-text-faint mb-4 leading-relaxed">
+        INE NR (TSR20) monthly settlement means across {data.years} prior years ({data.unit}) against this year's path.
+        Wintering (Feb–Apr) usually tightens supply into Q2; peak tapping (Oct–Dec) loosens it. If the red line tracks
+        inside the envelope, the move is seasonal shape — outside it, something else is going on. Arithmetic over the
+        public Sina NR0 series; no smoothing, not investment advice.
+      </p>
+      <div className="border border-border-subtle bg-surface p-5">
+        <DeskLineChart series={series} height={200} />
       </div>
     </div>
   );

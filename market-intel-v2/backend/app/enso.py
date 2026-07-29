@@ -13,6 +13,8 @@ import time
 
 import httpx
 
+from app.netutil import get_retry
+
 logger = logging.getLogger("market_intel")
 
 ONI_URL = "https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt"
@@ -28,8 +30,7 @@ def get_enso_state() -> dict | None:
     if cached and time.time() - cached_at < _TTL:
         return cached
     try:
-        resp = httpx.get(ONI_URL, timeout=20)
-        resp.raise_for_status()
+        resp = get_retry(ONI_URL, timeout=20)
         lines = [ln.split() for ln in resp.text.strip().splitlines() if ln.strip()]
         # rows: SEAS YR TOTAL ANOM — last row is the newest 3-month season
         last = lines[-1]

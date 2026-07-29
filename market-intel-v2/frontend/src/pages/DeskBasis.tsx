@@ -42,12 +42,12 @@ export default function DeskBasis() {
   // Live leg: the same board feed the Prices tab runs on — SGX poll is
   // per-minute (exchange feed itself ~15 min delayed), Shanghai and FX are
   // real-time, and this query re-asks every 10 s.
-  const { data: board } = useQuery({ queryKey: ["price-board"], queryFn: api.getPriceBoard, refetchInterval: 10_000 });
+  const { data: board } = useQuery({ queryKey: ["price-board"], queryFn: api.getPriceBoard, refetchInterval: 10_000, refetchIntervalInBackground: true });
   // Daily leg: physical sheets — they only change once a day.
   const { data, isLoading, isError } = useQuery({
     queryKey: ["desk-basis"],
     queryFn: () => api.getBasis(120),
-    refetchInterval: 120_000,
+    refetchInterval: 120_000, refetchIntervalInBackground: true,
   });
 
   const cnyusd = board?.fx.find((f) => f.pair === "CNYUSD")?.rate ?? null;

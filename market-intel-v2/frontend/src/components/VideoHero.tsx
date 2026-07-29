@@ -18,7 +18,7 @@ export function VideoHero() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [shouldLoad, setShouldLoad] = useState(false);
 
-  const { data: status } = useQuery({ queryKey: ["status"], queryFn: api.getStatus, refetchInterval: 60_000 });
+  const { data: status } = useQuery({ queryKey: ["status"], queryFn: api.getStatus, refetchInterval: 60_000, refetchIntervalInBackground: true });
 
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;

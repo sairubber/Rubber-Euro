@@ -215,6 +215,82 @@ def desk_vessels(db: Session = Depends(get_db)):
     return snap
 
 
+@router.get("/desk/spread-history")
+def spread_history(days: int = 180):
+    """SGX front settlement vs INE NR0 settlement (converted at each date's
+    own ECB USD/CNY reference rate) — the cross-exchange spread over time."""
+    from app.ine_history import get_nr0_kline, get_usdcny_by_date
+
+    days = min(days, 365)
+    sgx_by_date = {p["ts"][:10]: p["price"] for p in get_front_history(days)}
+    fx_by_date = get_usdcny_by_date(days)
+    since = (datetime.now(timezone.utc) - timedelta(days=days)).date().isoformat()
+
+    fx_dates = sorted(fx_by_date)
+
+    def fx_on_or_before(d: str) -> float | None:
+        candidate = None
+        for fd in fx_dates:
+            if fd > d:
+                break
+            candidate = fd
+        return fx_by_date[candidate] if candidate else None
+
+    out = []
+    for p in get_nr0_kline():
+        d = p["date"]
+        if d < since or d not in sgx_by_date:
+            continue
+        rate = fx_on_or_before(d)
+        if not rate:
+            continue
+        ine_usd = round(p["settle"] / rate, 1)
+        out.append(
+            {
+                "date": d,
+                "sgx": sgx_by_date[d],
+                "ine_cny": p["settle"],
+                "usdcny": round(rate, 4),
+                "ine_usd": ine_usd,
+                "spread": round(sgx_by_date[d] - ine_usd, 1),
+            }
+        )
+    return {
+        "note": "Settlement-vs-settlement; INE converted at each date's own ECB USD/CNY reference rate.",
+        "series": out,
+    }
+
+
+@router.get("/desk/ine-seasonality")
+def ine_seasonality():
+    """Multi-year INE NR monthly seasonality envelope — TSR20 data, no
+    sheet-grade proxy."""
+    from app.ine_history import seasonality_envelope
+
+    return seasonality_envelope()
+
+
+@router.get("/desk/portwatch")
+def desk_portwatch(days: int = 60):
+    """IMF PortWatch satellite-AIS daily activity for the rubber ports —
+    real daily port calls and cargo tonnage estimates, ~3-5 day lag."""
+    from app.portwatch import get_port_activity
+
+    return {
+        "source": "IMF PortWatch (satellite AIS, open data) — cargo estimates are all-cargo, not rubber-specific",
+        "ports": get_port_activity(days),
+    }
+
+
+@router.get("/desk/vessel-search")
+def vessel_search(q: str):
+    """In-app search over the live AIS store (ships currently in the
+    subscribed boxes). No global lookup — that data is paid."""
+    from app.vessels import search_vessels
+
+    return {"query": q, "matches": search_vessels(q)}
+
+
 @router.get("/desk/warrant-stocks")
 def warrant_stocks(days: int = 180):
     """INE NR (TSR20) on-warrant warehouse stocks — daily tonnes + change,

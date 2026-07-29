@@ -31,7 +31,7 @@ export function TrendingCountriesPanel() {
   const { data } = useQuery({
     queryKey: ["country-breakdown", "TSR20", "all"],
     queryFn: () => api.getCountryBreakdown("TSR20", "trade"),
-    refetchInterval: 300_000,
+    refetchInterval: 300_000, refetchIntervalInBackground: true,
   });
 
   const rows = (data ?? []).filter((r) => r.country !== "Unspecified").slice(0, 8);
@@ -153,12 +153,12 @@ export function SupplyRiskPanel() {
   const { data: signals } = useQuery({
     queryKey: ["signals-regions"],
     queryFn: api.getRegionSignals,
-    refetchInterval: 300_000,
+    refetchInterval: 300_000, refetchIntervalInBackground: true,
   });
   const { data: outlook } = useQuery({
     queryKey: ["outlook"],
     queryFn: api.getMarketOutlook,
-    refetchInterval: 300_000,
+    refetchInterval: 300_000, refetchIntervalInBackground: true,
   });
 
   const rows = (signals ?? []).slice().sort((a, b) => b.composite_score - a.composite_score).slice(0, 5);

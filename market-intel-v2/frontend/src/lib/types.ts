@@ -457,3 +457,68 @@ export interface ThaiFob {
   latest: { price_date: string; thb_kg: number; usd_mt: number | null } | null;
   series: ThaiFobPoint[];
 }
+
+export interface PortActivityPoint {
+  date: string;
+  portcalls: number;
+  portcalls_cargo: number;
+  import_kt: number;
+  export_kt: number;
+}
+
+export interface PortActivity {
+  portid: string;
+  port: string;
+  latest: PortActivityPoint | null;
+  avg7_calls: number | null;
+  series: PortActivityPoint[];
+}
+
+export interface PortWatchData {
+  source: string;
+  ports: PortActivity[];
+}
+
+export interface SpreadHistoryPoint {
+  date: string;
+  sgx: number;
+  ine_cny: number;
+  usdcny: number;
+  ine_usd: number;
+  spread: number;
+}
+
+export interface SpreadHistory {
+  note: string;
+  series: SpreadHistoryPoint[];
+}
+
+export interface SeasonalityMonth {
+  month: number;
+  min: number;
+  median: number;
+  max: number;
+}
+
+export interface IneSeasonality {
+  unit: string;
+  years: number;
+  envelope: SeasonalityMonth[];
+  current_year: { month: number; mean: number }[];
+}
+
+export interface VesselSearchMatch {
+  mmsi: number;
+  name: string;
+  lat: number;
+  lon: number;
+  sog: number | null;
+  port: string;
+  type_class: "cargo" | "tanker" | "other" | "unknown";
+  seen_ago_s: number;
+}
+
+export interface VesselSearchResult {
+  query: string;
+  matches: VesselSearchMatch[];
+}

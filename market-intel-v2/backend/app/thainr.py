@@ -33,8 +33,9 @@ HEADERS = {
 
 # The date sits after a <br/> inside the header ("FOB ... (Laemchabang)<br/>
 # 24 July 2026"), so the window between anchor and date must allow tags.
-_DATE_RE = re.compile(r"Laemchabang\)[\s\S]{0,80}?(\d{1,2}\s+\w+\s+\d{4})")
-_STR20_RE = re.compile(r"\(STR\s*20\)[\s\S]{0,200}?([\d.,]+)\s*BAHT/KG")
+# \s in these windows also swallows &nbsp; once entities are normalised.
+_DATE_RE = re.compile(r"Laemchabang\)?[\s\S]{0,120}?(\d{1,2}\s+\w+\s+\d{4})")
+_STR20_RE = re.compile(r"\(\s*STR\s*20\s*\)[\s\S]{0,300}?([\d.,]+)\s*BAHT\s*/\s*KG", re.I)
 
 _cache: tuple[float, dict | None] = (0.0, None)
 _TTL = 3600
@@ -46,22 +47,30 @@ def fetch_str20() -> dict | None:
     cached_at, cached = _cache
     if cached and time.time() - cached_at < _TTL:
         return cached
-    try:
-        resp = httpx.get(TRA_URL, headers=HEADERS, timeout=25, follow_redirects=True)
-        resp.raise_for_status()
-        text = resp.text
-        date_m = _DATE_RE.search(text)
-        price_m = _STR20_RE.search(text)
-        if not date_m or not price_m:
-            logger.warning("TRA page fetched but STR20 widget not found — layout may have changed")
-            return cached
-        price_date = datetime.strptime(date_m.group(1), "%d %B %Y").date().isoformat()
-        state = {"price_date": price_date, "thb_kg": float(price_m.group(1).replace(",", ""))}
-        _cache = (time.time(), state)
-        return state
-    except Exception:
-        logger.exception("TRA STR20 fetch failed — serving cached value")
-        return cached
+    for attempt in (1, 2):  # one retry — TRA's shared host hiccups occasionally
+        try:
+            resp = httpx.get(TRA_URL, headers=HEADERS, timeout=25, follow_redirects=True)
+            resp.raise_for_status()
+            text = resp.text.replace("&nbsp;", " ")
+            date_m = _DATE_RE.search(text)
+            price_m = _STR20_RE.search(text)
+            if not date_m or not price_m:
+                logger.warning("TRA page fetched but STR20 widget not found — layout may have changed")
+                return cached
+            price_date = datetime.strptime(date_m.group(1), "%d %B %Y").date().isoformat()
+            thb = float(price_m.group(1).replace(",", ""))
+            if not 20 < thb < 300:  # a parse that lands outside any plausible THB/kg is a bug, not a price
+                logger.warning("TRA STR20 parsed to implausible %s THB/kg — keeping cache", thb)
+                return cached
+            state = {"price_date": price_date, "thb_kg": thb}
+            _cache = (time.time(), state)
+            return state
+        except Exception:
+            if attempt == 2:
+                logger.exception("TRA STR20 fetch failed twice — serving cached value")
+            else:
+                time.sleep(2)
+    return cached
 
 
 def sync_str20(db: Session) -> dict | None:
@@ -79,9 +88,12 @@ def sync_str20(db: Session) -> dict | None:
     if row is None:
         row = ThaiFobPrice(price_date=current["price_date"], thb_kg=current["thb_kg"], usd_mt=usd_mt)
         db.add(row)
-    else:
+        db.commit()
+    elif row.thb_kg != current["thb_kg"] or (usd_mt is not None and row.usd_mt != usd_mt):
+        # Only touch the DB when the print actually moved — this sync runs on
+        # every basis/bulletin request, and identical rewrites are pure churn.
         row.thb_kg = current["thb_kg"]
         if usd_mt is not None:
             row.usd_mt = usd_mt
-    db.commit()
+        db.commit()
     return {"price_date": row.price_date, "thb_kg": row.thb_kg, "usd_mt": row.usd_mt}

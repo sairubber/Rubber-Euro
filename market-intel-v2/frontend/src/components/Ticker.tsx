@@ -11,7 +11,7 @@ export function Ticker() {
     queries: MARKETS.map((m) => ({
       queryKey: ["ticker", m.code],
       queryFn: () => api.getNewsHistory(m.code, { limit: 6 }),
-      refetchInterval: 120_000,
+      refetchInterval: 120_000, refetchIntervalInBackground: true,
       staleTime: 60_000,
     })),
   });

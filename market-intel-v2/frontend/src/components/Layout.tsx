@@ -71,7 +71,7 @@ export default function Layout() {
   const { data: status } = useQuery({
     queryKey: ["status"],
     queryFn: api.getStatus,
-    refetchInterval: 60_000,
+    refetchInterval: 60_000, refetchIntervalInBackground: true,
   });
   // The Prices page stays mounted permanently and is only hidden on other
   // routes — unmounting would destroy the TradingView iframe and with it

@@ -20,7 +20,7 @@ function Chip({ value, suffix = "" }: { value: number | null; suffix?: string })
 }
 
 export default function DeskBulletin() {
-  const { data, isLoading } = useQuery({ queryKey: ["desk-bulletin"], queryFn: api.getBulletin, refetchInterval: 300_000 });
+  const { data, isLoading } = useQuery({ queryKey: ["desk-bulletin"], queryFn: api.getBulletin, refetchInterval: 300_000, refetchIntervalInBackground: true });
 
   if (isLoading) return <EmptyState loading title="Assembling the bulletin…" />;
   if (!data) return <EmptyState title="Bulletin unavailable" description="The backend hasn't answered — check back after the next sync." />;

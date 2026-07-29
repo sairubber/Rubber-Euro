@@ -96,37 +96,37 @@ export default function TradeFlow() {
   const flowsRef = useReveal();
   const newsRef = useReveal();
 
-  const { data: balance } = useQuery({ queryKey: ["trade-balance"], queryFn: api.getTradeBalance, refetchInterval: 300_000 });
-  const { data: supply } = useQuery({ queryKey: ["trade-supply"], queryFn: () => api.getTradeSupply("A"), refetchInterval: 300_000 });
-  const { data: demand } = useQuery({ queryKey: ["trade-demand"], queryFn: () => api.getTradeDemand("A"), refetchInterval: 300_000 });
+  const { data: balance } = useQuery({ queryKey: ["trade-balance"], queryFn: api.getTradeBalance, refetchInterval: 300_000, refetchIntervalInBackground: true });
+  const { data: supply } = useQuery({ queryKey: ["trade-supply"], queryFn: () => api.getTradeSupply("A"), refetchInterval: 300_000, refetchIntervalInBackground: true });
+  const { data: demand } = useQuery({ queryKey: ["trade-demand"], queryFn: () => api.getTradeDemand("A"), refetchInterval: 300_000, refetchIntervalInBackground: true });
   const { data: timeline, isLoading: timelineLoading } = useQuery({
     queryKey: ["trade-timeline", freq],
     queryFn: () => api.getTradeTimeline(freq),
-    refetchInterval: 300_000,
+    refetchInterval: 300_000, refetchIntervalInBackground: true,
   });
-  const { data: flows } = useQuery({ queryKey: ["trade-flows"], queryFn: api.getTradeFlows, refetchInterval: 300_000 });
+  const { data: flows } = useQuery({ queryKey: ["trade-flows"], queryFn: api.getTradeFlows, refetchInterval: 300_000, refetchIntervalInBackground: true });
 
   // TSR20 only — this page is the rubber trade desk. EUR/USD trade news has
   // its own wall and must never appear here.
   const { data: news, isLoading: newsLoading } = useQuery({
     queryKey: ["news-history", "TSR20", "trade"],
     queryFn: () => api.getNewsHistory("TSR20", { limit: 30, category: "trade" }),
-    refetchInterval: 60_000,
+    refetchInterval: 60_000, refetchIntervalInBackground: true,
   });
   const { data: grades } = useQuery({
     queryKey: ["trade-grades", freq],
     queryFn: () => api.getTradeGrades(freq),
-    refetchInterval: 300_000,
+    refetchInterval: 300_000, refetchIntervalInBackground: true,
   });
   const { data: fresh } = useQuery({
     queryKey: ["trade-freshness"],
     queryFn: api.getTradeFreshness,
-    refetchInterval: 300_000,
+    refetchInterval: 300_000, refetchIntervalInBackground: true,
   });
   const { data: eu } = useQuery({
     queryKey: ["eu-imports"],
     queryFn: api.getEUImports,
-    refetchInterval: 300_000,
+    refetchInterval: 300_000, refetchIntervalInBackground: true,
   });
 
   const hasTradeData = (timeline?.frames.length ?? 0) > 0;

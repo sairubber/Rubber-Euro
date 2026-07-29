@@ -100,8 +100,8 @@ export function GradeChart({ series }: { series: GradeSeries }) {
       </p>
 
       <svg viewBox="0 0 100 32" preserveAspectRatio="none" className="w-full h-12 mt-3" role="img" aria-label={`${series.grade} export volume trend`}>
-        <path d={area} fill={color} opacity={0.14} />
-        <path d={path} fill="none" stroke={color} strokeWidth={1.2} vectorEffect="non-scaling-stroke" />
+        <path d={area} fill={color} opacity={0.14} className="chart-fade-up" />
+        <path d={path} fill="none" stroke={color} strokeWidth={1.2} vectorEffect="non-scaling-stroke" pathLength={1} className="chart-draw" />
         {bars.map((b, i) => (
           <rect key={i} x={b.x} y={32 - b.h} width={b.w} height={b.h} fill={color} opacity={0.28}>
             <title>{`${formatPeriod(b.period)} — ${formatTonnes(b.qty)}`}</title>

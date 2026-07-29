@@ -2,8 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 import { Anchor, Navigation, TrendingDown, TrendingUp } from "lucide-react";
 import { api } from "@/lib/api";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Sparkline } from "@/components/Sparkline";
+import { TYPE_LABEL } from "@/lib/labels";
 import { cn } from "@/lib/utils";
-import type { VesselPort } from "@/lib/types";
+import type { PortActivity, VesselPort } from "@/lib/types";
 
 /** Vessel Watch — live AIS over the rubber trade's port boxes. Ships, not
  * cargoes: AIS proves a vessel's position, not what's in its holds. The
@@ -35,22 +37,62 @@ function TrendChip({ port }: { port: VesselPort }) {
 function TrendSparkline({ port }: { port: VesselPort }) {
   const pts = port.trend?.points ?? [];
   if (pts.length < 4) return null;
-  const W = 100;
-  const H = 20;
-  const max = Math.max(...pts.map((p) => p.anchored_commodity), 1);
-  const step = W / (pts.length - 1);
-  const d = pts.map((p, i) => `${i === 0 ? "M" : "L"}${(i * step).toFixed(1)},${(H - (p.anchored_commodity / max) * H).toFixed(1)}`).join(" ");
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="w-full h-5 mt-1" role="img" aria-label="anchored commodity vessels, 7 days">
-      <path d={d} fill="none" stroke="#2f6b4f" strokeWidth={1.2} vectorEffect="non-scaling-stroke" />
-    </svg>
+    <div className="mt-1">
+      <Sparkline values={pts.map((p) => p.anchored_commodity)} height={20} label="anchored commodity vessels, 7 days" />
+    </div>
   );
 }
 
-const TYPE_LABEL: Record<string, string> = { cargo: "cargo", tanker: "tanker", other: "other craft", unknown: "type pending" };
+/** Daily satellite-AIS activity per rubber port — IMF PortWatch open data.
+ * This is what covers the ports the free terrestrial receivers can't hear:
+ * not live positions, but real daily port calls with a few days' lag. */
+function PortActivityCard({ p }: { p: PortActivity }) {
+  const pts = p.series.map((s) => s.portcalls);
+  const delta = p.latest && p.avg7_calls ? p.latest.portcalls - p.avg7_calls : null;
+
+  return (
+    <div className="border border-border-subtle bg-surface p-4">
+      <div className="flex items-baseline justify-between mb-1">
+        <p className="text-sm font-medium text-text">{p.port}</p>
+        {p.latest && <p className="kicker text-[9px] text-text-faint">{p.latest.date}</p>}
+      </div>
+      {p.latest ? (
+        <>
+          <p className="num text-xl font-bold text-text">
+            {p.latest.portcalls}
+            <span className="kicker text-[8px] text-text-faint font-normal ml-1">port calls</span>
+            {delta !== null && (
+              <span className={cn("num text-[11px] ml-2 font-normal", delta > 0 ? "text-bull" : delta < 0 ? "text-bear" : "text-text-faint")}>
+                {delta > 0 ? "+" : ""}
+                {delta.toFixed(1)} vs 7-day avg
+              </span>
+            )}
+          </p>
+          <p className="text-[11px] text-text-dim mt-1">
+            cargo in ~{p.latest.import_kt.toLocaleString()} kt · out ~{p.latest.export_kt.toLocaleString()} kt
+          </p>
+          {pts.length > 3 && (
+            <div className="mt-2">
+              <Sparkline values={pts} color="#2b4c7e" height={24} label={`${p.port} daily port calls`} />
+            </div>
+          )}
+        </>
+      ) : (
+        <p className="text-[11px] text-text-faint">No PortWatch rows returned for this port.</p>
+      )}
+    </div>
+  );
+}
 
 export default function VesselWatch() {
-  const { data, isLoading } = useQuery({ queryKey: ["vessels"], queryFn: api.getVessels, refetchInterval: 30_000 });
+  const { data, isLoading } = useQuery({ queryKey: ["vessels"], queryFn: api.getVessels, refetchInterval: 30_000, refetchIntervalInBackground: true });
+  const { data: portwatch } = useQuery({
+    queryKey: ["portwatch"],
+    queryFn: () => api.getPortWatch(60),
+    staleTime: 3_600_000,
+    refetchInterval: 3_600_000, refetchIntervalInBackground: true, // dataset gains one row per port per day
+  });
 
   if (isLoading) return <EmptyState loading title="Reading the AIS stream…" />;
   if (!data) return <EmptyState title="Vessel feed unavailable" description="Backend not answering." />;
@@ -118,6 +160,23 @@ export default function VesselWatch() {
           </div>
         ))}
       </div>
+
+      {portwatch && portwatch.ports.some((p) => p.series.length > 0) && (
+        <section className="pt-6 border-t border-rule">
+          <p className="kicker text-[10px] text-text-dim mb-1">
+            Daily port activity — IMF PortWatch (satellite AIS, open data)
+          </p>
+          <p className="text-[11px] text-text-faint mb-4 leading-relaxed">
+            This covers the ports the free live receivers can't hear: real daily port calls and PortWatch's all-cargo
+            tonnage estimates (not rubber-specific), published with a ~3–5 day lag. 60-day sparkline of daily calls.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {portwatch.ports.map((p) => (
+              <PortActivityCard key={p.portid} p={p} />
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="pt-4 border-t border-rule text-[11px] text-text-faint leading-relaxed">
         <span className="kicker text-[10px] text-text-dim mr-1">Method &amp; coverage honesty:</span>

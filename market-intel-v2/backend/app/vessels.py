@@ -185,6 +185,31 @@ def start_vessel_watch() -> None:
     loop.create_task(_record_counts())
 
 
+def search_vessels(q: str) -> list[dict]:
+    """Search the live in-memory store by ship name substring or MMSI.
+    Only ships currently (last 30 min) inside the subscribed boxes exist
+    here — there is no free global name/IMO lookup API, and scraping the
+    commercial trackers is off the table."""
+    q = q.strip().lower()
+    if not q:
+        return []
+    now = time.time()
+    out = []
+    for mmsi, v in _vessels.items():
+        if now - v["seen"] > STALE_AFTER_S:
+            continue
+        if q in v["name"].lower() or q == str(mmsi):
+            out.append(
+                {
+                    **v,
+                    "mmsi": mmsi,
+                    "type_class": _classify(mmsi),
+                    "seen_ago_s": round(now - v["seen"]),
+                }
+            )
+    return sorted(out, key=lambda v: v["seen_ago_s"])[:20]
+
+
 def get_vessel_snapshot() -> dict:
     now = time.time()
     for mmsi in [m for m, v in _vessels.items() if now - v["seen"] > STALE_AFTER_S]:
