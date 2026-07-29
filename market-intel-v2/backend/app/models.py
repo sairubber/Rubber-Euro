@@ -165,6 +165,21 @@ class PhysicalPrice(Base):
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
 
 
+class ThaiFobPrice(Base):
+    """STR20 FOB Laem Chabang offer price from the Thai Rubber Association's
+    public widget — THB/kg as published, plus the USD/tonne conversion made
+    at fetch time with that day's live USDTHB rate (so history never gets
+    silently re-priced by later FX moves). One row per published date."""
+
+    __tablename__ = "thai_fob_prices"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    price_date: Mapped[str] = mapped_column(String, nullable=False, unique=True)  # YYYY-MM-DD
+    thb_kg: Mapped[float] = mapped_column(Float, nullable=False)
+    usd_mt: Mapped[float | None] = mapped_column(Float, nullable=True)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+
 class FxRate(Base):
     """Latest live FX rate per pair, fetched from the free open.er-api.com
     endpoint (no key). One row per pair, overwritten each refresh; the

@@ -21,7 +21,9 @@ from app.config import IST
 from app.database import get_db
 from app.enso import get_enso_state
 from app.models import ClimateReading, FuturesQuote, FxRate, NewsArticle, PhysicalPrice
+from app.models import ThaiFobPrice
 from app.sgx import get_front_history, get_sgx_price_as_of
+from app.thainr import sync_str20
 from app.warrants import get_nr_warrant_stocks
 
 router = APIRouter(tags=["desk"])
@@ -105,8 +107,34 @@ def get_basis(days: int = 90, db: Session = Depends(get_db)):
             }
         )
 
+    # Thailand leg — TRA's own FOB Laem Chabang offer, THB converted at the
+    # live USDTHB rate (per-date at fetch time for the stored history).
+    str20 = sync_str20(db)
+    if str20 and str20.get("usd_mt"):
+        physicals.insert(
+            0,
+            {
+                "location": "Laem Chabang",
+                "grade": "STR20",
+                "label": "STR20 · Laem Chabang FOB",
+                "kind": "block",
+                "usd_mt": str20["usd_mt"],
+                "price_date": str20["price_date"],
+                "basis": round(str20["usd_mt"] - front.price, 1),
+                "basis_ine": round(str20["usd_mt"] - shanghai["usd_price"], 1) if shanghai else None,
+            },
+        )
+
     by_grade = {p["grade"]: p for p in physicals}
     spreads = []
+    if "STR20" in by_grade and "SMR20" in by_grade:
+        spreads.append(
+            {
+                "label": "STR20 − SMR20",
+                "note": "Thailand vs Malaysia origin spread (same spec)",
+                "value": round(by_grade["STR20"]["usd_mt"] - by_grade["SMR20"]["usd_mt"], 1),
+            }
+        )
     if "ISNR20" in by_grade and "SMR20" in by_grade:
         spreads.append(
             {
@@ -122,6 +150,10 @@ def get_basis(days: int = 90, db: Session = Depends(get_db)):
     settle_by_date = {p["ts"][:10]: p["price"] for p in get_front_history(days)}
     settle_dates = sorted(settle_by_date)
     series = {spec["grade"]: _physical_series(db, spec["location"], spec["grade"], days) for spec in BASIS_SPECS}
+    series["STR20"] = {
+        r.price_date: r.usd_mt
+        for r in db.query(ThaiFobPrice).filter(ThaiFobPrice.usd_mt.isnot(None)).order_by(ThaiFobPrice.price_date.desc()).limit(days)
+    }
 
     def settle_on_or_before(date: str) -> float | None:
         candidate = None
@@ -221,6 +253,17 @@ def desk_bulletin(db: Session = Depends(get_db)):
 
     physicals = []
     if sgx:
+        str20 = sync_str20(db)
+        if str20 and str20.get("usd_mt"):
+            physicals.append(
+                {
+                    "label": "STR20 · Laem Chabang FOB",
+                    "grade": "STR20",
+                    "usd_mt": str20["usd_mt"],
+                    "price_date": str20["price_date"],
+                    "basis": round(str20["usd_mt"] - sgx[0].price, 1),
+                }
+            )
         for spec in BASIS_SPECS:
             row = _latest_physical(db, spec["location"], spec["grade"])
             if row is None:
@@ -292,6 +335,24 @@ def desk_bulletin(db: Session = Depends(get_db)):
         "rain_hit": rain_hit,
         "enso": get_enso_state(),
         "headlines": headlines,
+    }
+
+
+@router.get("/desk/thai-fob")
+def thai_fob(days: int = 120, db: Session = Depends(get_db)):
+    """TRA STR20 FOB Laem Chabang — latest print plus stored history (each
+    date converted at that day's fetched USDTHB rate)."""
+    latest = sync_str20(db)
+    rows = (
+        db.query(ThaiFobPrice)
+        .order_by(ThaiFobPrice.price_date.desc())
+        .limit(min(days, 365))
+        .all()
+    )
+    return {
+        "source": "Thai Rubber Association offer price, FOB Laem Chabang",
+        "latest": latest,
+        "series": [{"price_date": r.price_date, "thb_kg": r.thb_kg, "usd_mt": r.usd_mt} for r in reversed(rows)],
     }
 
 

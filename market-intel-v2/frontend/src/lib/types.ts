@@ -325,8 +325,10 @@ export interface BasisHistoryPoint {
   sgx_settle: number;
   smr20?: number;
   isnr20?: number;
+  str20?: number;
   basis_smr20?: number;
   basis_isnr20?: number;
+  basis_str20?: number;
 }
 
 export interface BasisSnapshot {
@@ -428,4 +430,16 @@ export interface VesselSnapshot {
   last_message_age_s: number | null;
   anchored_sog_kn: number;
   ports: VesselPort[];
+}
+
+export interface ThaiFobPoint {
+  price_date: string;
+  thb_kg: number;
+  usd_mt: number | null;
+}
+
+export interface ThaiFob {
+  source: string;
+  latest: { price_date: string; thb_kg: number; usd_mt: number | null } | null;
+  series: ThaiFobPoint[];
 }

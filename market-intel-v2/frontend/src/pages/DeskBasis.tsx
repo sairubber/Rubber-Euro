@@ -14,6 +14,7 @@ import { cn, relativeTime } from "@/lib/utils";
  * sheets — that data prints once a day, and is labelled as such. */
 
 const BASIS_COLORS: Record<string, string> = {
+  STR20: "#9d6f1d", // Thai amber — TRA FOB Laem Chabang
   SMR20: "#2f6b4f", // house green — block rubber, same spec family as the future
   ISNR20: "#2b4c7e", // milky blue — Indian block
 };
@@ -182,7 +183,7 @@ export default function DeskBasis() {
             Physical basis — Rubber Board official sheets · prints once per market day
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {data.physicals.map((p) => (
               <div key={p.grade} className="border border-border-subtle bg-surface p-4">
                 <div className="flex items-start justify-between gap-2">
@@ -248,8 +249,12 @@ export default function DeskBasis() {
         INE leg is converted from CNY at the live CNYUSD rate for comparison only; INE is China's onshore bonded
         market, so the spread also reflects Chinese import economics. Physical sheets: Rubber Board of India, published
         per 100 kg and shown ×10 as $/tonne; each print pairs with the most recent SGX settlement on or before its
-        date. SMR20 and ISNR20 are TSR-spec grades; sheet grades (RSS) stay off this screen because the desk trades
-        TSR20 only. ISNR20 is Kottayam's domestic price — its premium includes India's import-duty wall.
+        date. STR20 is the Thai Rubber Association's own FOB Laem Chabang offer price, published in THB/kg and
+        converted at the live USDTHB rate (history keeps each day's own conversion). SMR20, ISNR20 and STR20 are all
+        TSR-spec grades; sheet grades (RSS) stay off this screen because the desk trades TSR20 only. ISNR20 is
+        Kottayam's domestic price — its premium includes India's import-duty wall. Indonesia SIR20, Vietnam SVR20 and
+        Ivory Coast AFR20 have no free official daily feed (GAPKINDO/VRA publish to members only) — absent rather than
+        estimated.
       </div>
     </div>
   );

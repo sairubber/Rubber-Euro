@@ -16,6 +16,37 @@ const KEY_GRADES = [
   { location: "Kottayam", grade: "ISNR20", label: "ISNR20 · Kottayam", color: "#2b4c7e" },
 ];
 
+/** Thailand's leg comes from a different source (TRA FOB widget, THB→USD at
+ * each day's fetched rate) so it gets its own card instead of the
+ * PhysicalPrice-backed sparkline. */
+function ThaiFobCard() {
+  const { data } = useQuery({ queryKey: ["thai-fob"], queryFn: () => api.getThaiFob(120), staleTime: 300_000 });
+  const points = (data?.series ?? [])
+    .filter((p) => p.usd_mt !== null)
+    .map((p) => ({ x: p.price_date.slice(5), y: p.usd_mt as number }));
+  const latest = data?.latest;
+
+  return (
+    <div className="border border-border-subtle bg-surface p-4">
+      <div className="flex items-baseline justify-between gap-2 mb-1">
+        <p className="kicker text-[10px]" style={{ color: "#9d6f1d" }}>STR20 · Laem Chabang FOB</p>
+        {latest && <span className="kicker text-[9px] text-text-faint">{latest.price_date}</span>}
+      </div>
+      {latest?.usd_mt ? (
+        <p className="num text-xl font-bold text-text mb-2">
+          ${latest.usd_mt.toFixed(0)}
+          <span className="text-xs font-normal text-text-faint ml-1">/tonne</span>
+          <span className="num text-[11px] font-normal text-text-dim ml-2">{latest.thb_kg.toFixed(2)} THB/kg</span>
+        </p>
+      ) : (
+        <p className="text-[11px] text-text-faint mb-2">TRA print not fetched yet.</p>
+      )}
+      <DeskLineChart series={[{ key: "str20", label: "STR20 FOB (TRA)", color: "#9d6f1d", points }]} height={90} />
+      <p className="kicker text-[8px] text-text-faint mt-2">TRA offer price · THB→USD at each day's live rate</p>
+    </div>
+  );
+}
+
 const TSR_GRADE = /ISNR|SMR|TSR|STR|SIR|SVR/i;
 
 // The classic SE Asia + India tapping calendar. Month is 1-12.
@@ -118,7 +149,8 @@ export default function OriginDesk() {
       </div>
 
       {/* Key grade sparklines */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <ThaiFobCard />
         {KEY_GRADES.map((g) => (
           <GradeSparkline key={g.grade} {...g} />
         ))}
@@ -129,7 +161,12 @@ export default function OriginDesk() {
       {physical && physical.locations.length > 0 && (
         <div>
           <p className="kicker text-[10px] text-text-faint mb-3">
-            TSR20-spec physical matrix — USD/tonne · {physical.source ?? "Rubber Board of India"}
+            TSR20-spec physical matrix — USD/tonne · {physical.source ?? "Rubber Board of India"} + TRA Thailand
+          </p>
+          <p className="text-[11px] text-text-faint mb-3 leading-relaxed">
+            Country coverage honesty: Thailand (TRA FOB), Malaysia (SMR20) and India (ISNR20) have free official daily
+            prints. Indonesia SIR20, Vietnam SVR20 and Ivory Coast AFR20 are published to GAPKINDO/VRA members only —
+            no free official feed exists, so they are absent rather than estimated.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {physical.locations
