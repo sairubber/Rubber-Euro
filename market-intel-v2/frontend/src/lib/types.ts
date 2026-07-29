@@ -413,6 +413,14 @@ export interface VesselRecord {
   sog: number | null;
   port: string;
   seen: number;
+  type_class: "cargo" | "tanker" | "other" | "unknown";
+}
+
+export interface VesselTrend {
+  avg_7d: number | null;
+  pct_vs_avg: number | null;
+  samples: number;
+  points: { ts: string; anchored_commodity: number }[];
 }
 
 export interface VesselPort {
@@ -420,6 +428,12 @@ export interface VesselPort {
   total: number;
   anchored: number;
   moving: number;
+  cargo: number;
+  tanker: number;
+  other: number;
+  unknown: number;
+  anchored_commodity: number;
+  trend: VesselTrend;
   vessels: VesselRecord[];
 }
 

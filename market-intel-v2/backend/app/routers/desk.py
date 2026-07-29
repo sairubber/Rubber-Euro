@@ -191,12 +191,28 @@ def get_basis(days: int = 90, db: Session = Depends(get_db)):
 
 
 @router.get("/desk/vessels")
-def desk_vessels():
-    """Live AIS snapshot per rubber-port box. Ships, not cargoes — see the
-    honesty note in app/vessels.py."""
+def desk_vessels(db: Session = Depends(get_db)):
+    """Live AIS snapshot per rubber-port box, plus the 7-day congestion trend
+    from the stored ten-minute counts. Ships, not cargoes — see the honesty
+    note in app/vessels.py."""
+    from app.models import VesselCount
     from app.vessels import get_vessel_snapshot
 
-    return get_vessel_snapshot()
+    snap = get_vessel_snapshot()
+    since = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=7)
+    for p in snap["ports"]:
+        rows = (
+            db.query(VesselCount.ts, VesselCount.anchored_commodity)
+            .filter(VesselCount.port == p["port"], VesselCount.ts >= since)
+            .order_by(VesselCount.ts.asc())
+            .all()
+        )
+        stride = max(len(rows) // 72, 1)  # ≤ ~72 sparkline points
+        points = [{"ts": r[0].isoformat() if hasattr(r[0], "isoformat") else str(r[0]), "anchored_commodity": r[1]} for r in rows[::stride]]
+        avg = round(sum(r[1] for r in rows) / len(rows), 1) if rows else None
+        pct = round((p["anchored_commodity"] - avg) / avg * 100, 1) if avg else None
+        p["trend"] = {"avg_7d": avg, "pct_vs_avg": pct, "samples": len(rows), "points": points}
+    return snap
 
 
 @router.get("/desk/warrant-stocks")

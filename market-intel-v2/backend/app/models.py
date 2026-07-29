@@ -165,6 +165,26 @@ class PhysicalPrice(Base):
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
 
 
+class VesselCount(Base):
+    """Ten-minute snapshot of the AIS picture per port box — what turns the
+    Vessel Watch's raw 'N at anchor' into a trend ('vs 7-day average').
+    anchored_commodity counts only cargo (AIS type 70-79) and tanker (80-89)
+    hulls, the classes that could actually be carrying rubber."""
+
+    __tablename__ = "vessel_counts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    port: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    ts: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False, index=True)
+    total: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    anchored: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    cargo: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    tanker: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    other: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    unknown: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    anchored_commodity: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+
 class ThaiFobPrice(Base):
     """STR20 FOB Laem Chabang offer price from the Thai Rubber Association's
     public widget — THB/kg as published, plus the USD/tonne conversion made

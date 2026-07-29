@@ -48,11 +48,26 @@ PORT_BOXES: dict[str, tuple[float, float, float, float]] = {
 
 ANCHORED_SOG_KN = 0.5
 STALE_AFTER_S = 1800  # drop a vessel not heard from in 30 min
+COUNT_EVERY_S = 600  # snapshot cadence for the congestion-trend history
+COUNT_KEEP_DAYS = 8
 
 # MMSI → {name, lat, lon, sog, port, seen}
 _vessels: dict[int, dict] = {}
+# MMSI → AIS ship type (from ShipStaticData; arrives minutes after positions)
+_types: dict[int, int] = {}
 _connected_since: float | None = None
 _last_message_at: float | None = None
+
+
+def _classify(mmsi: int) -> str:
+    t = _types.get(mmsi)
+    if t is None:
+        return "unknown"
+    if 70 <= t <= 79:
+        return "cargo"
+    if 80 <= t <= 89:
+        return "tanker"
+    return "other"
 
 
 def _port_for(lat: float, lon: float) -> str | None:
@@ -70,7 +85,9 @@ async def _consume() -> None:
         {
             "APIKey": AISSTREAM_KEY,
             "BoundingBoxes": [[[la1, lo1], [la2, lo2]] for la1, lo1, la2, lo2 in PORT_BOXES.values()],
-            "FilterMessageTypes": ["PositionReport"],
+            # ShipStaticData carries the AIS ship type — without it every hull
+            # (tug, barge, ferry) counts the same as a cargo ship.
+            "FilterMessageTypes": ["PositionReport", "ShipStaticData"],
         }
     )
     backoff = 5
@@ -83,7 +100,16 @@ async def _consume() -> None:
                 logger.info("aisstream connected — %d port boxes subscribed", len(PORT_BOXES))
                 async for raw in ws:
                     msg = json.loads(raw)
-                    if msg.get("MessageType") != "PositionReport":
+                    kind = msg.get("MessageType")
+                    if kind == "ShipStaticData":
+                        meta = msg.get("MetaData") or {}
+                        static = (msg.get("Message") or {}).get("ShipStaticData") or {}
+                        mmsi = meta.get("MMSI")
+                        ship_type = static.get("Type")
+                        if mmsi is not None and ship_type is not None:
+                            _types[mmsi] = ship_type
+                        continue
+                    if kind != "PositionReport":
                         continue
                     meta = msg.get("MetaData") or {}
                     body = (msg.get("Message") or {}).get("PositionReport") or {}
@@ -112,13 +138,51 @@ async def _consume() -> None:
             backoff = min(backoff * 2, 300)
 
 
+async def _record_counts() -> None:
+    """Every 10 minutes, write one VesselCount row per port — the raw
+    material for the 'vs 7-day average' congestion trend."""
+    from datetime import datetime, timedelta, timezone
+
+    from app.database import SessionLocal
+    from app.models import VesselCount
+
+    while True:
+        await asyncio.sleep(COUNT_EVERY_S)
+        try:
+            snap = get_vessel_snapshot()
+            db = SessionLocal()
+            try:
+                for p in snap["ports"]:
+                    db.add(
+                        VesselCount(
+                            port=p["port"],
+                            total=p["total"],
+                            anchored=p["anchored"],
+                            cargo=p["cargo"],
+                            tanker=p["tanker"],
+                            other=p["other"],
+                            unknown=p["unknown"],
+                            anchored_commodity=p["anchored_commodity"],
+                        )
+                    )
+                cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=COUNT_KEEP_DAYS)
+                db.query(VesselCount).filter(VesselCount.ts < cutoff).delete(synchronize_session=False)
+                db.commit()
+            finally:
+                db.close()
+        except Exception:
+            logger.exception("Vessel count snapshot failed — next tick continues")
+
+
 def start_vessel_watch() -> None:
-    """Kick off the consumer on the running event loop. No key, no task —
-    the endpoint then reports itself unconfigured."""
+    """Kick off the consumer + count recorder on the running event loop. No
+    key, no tasks — the endpoint then reports itself unconfigured."""
     if not AISSTREAM_KEY:
         logger.info("AISSTREAM_KEY not set — vessel watch disabled")
         return
-    asyncio.get_event_loop().create_task(_consume())
+    loop = asyncio.get_event_loop()
+    loop.create_task(_consume())
+    loop.create_task(_record_counts())
 
 
 def get_vessel_snapshot() -> dict:
@@ -128,16 +192,27 @@ def get_vessel_snapshot() -> dict:
 
     ports = []
     for name in PORT_BOXES:
-        here = [v for v in _vessels.values() if v["port"] == name]
+        here = []
+        for mmsi, v in _vessels.items():
+            if v["port"] == name:
+                here.append({**v, "type_class": _classify(mmsi)})
         anchored = [v for v in here if v["sog"] is not None and v["sog"] < ANCHORED_SOG_KN]
         moving = [v for v in here if v["sog"] is not None and v["sog"] >= ANCHORED_SOG_KN]
+        commodity = [v for v in here if v["type_class"] in ("cargo", "tanker")]
+        # Commodity hulls shown first — they're what could carry rubber.
+        order = {"cargo": 0, "tanker": 1, "unknown": 2, "other": 3}
         ports.append(
             {
                 "port": name,
                 "total": len(here),
                 "anchored": len(anchored),
                 "moving": len(moving),
-                "vessels": sorted(here, key=lambda v: -v["seen"])[:12],
+                "cargo": sum(1 for v in here if v["type_class"] == "cargo"),
+                "tanker": sum(1 for v in here if v["type_class"] == "tanker"),
+                "other": sum(1 for v in here if v["type_class"] == "other"),
+                "unknown": sum(1 for v in here if v["type_class"] == "unknown"),
+                "anchored_commodity": sum(1 for v in commodity if v["sog"] is not None and v["sog"] < ANCHORED_SOG_KN),
+                "vessels": sorted(here, key=lambda v: (order[v["type_class"]], -v["seen"]))[:12],
             }
         )
     return {
