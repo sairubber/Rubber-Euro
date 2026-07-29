@@ -12,11 +12,15 @@ screen shares the $/tonne scale.
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.config import IST
 from app.database import get_db
-from app.models import FuturesQuote, FxRate, PhysicalPrice
+from app.enso import get_enso_state
+from app.models import ClimateReading, FuturesQuote, FxRate, NewsArticle, PhysicalPrice
 from app.sgx import get_front_history, get_sgx_price_as_of
 from app.warrants import get_nr_warrant_stocks
 
@@ -154,6 +158,15 @@ def get_basis(days: int = 90, db: Session = Depends(get_db)):
     }
 
 
+@router.get("/desk/vessels")
+def desk_vessels():
+    """Live AIS snapshot per rubber-port box. Ships, not cargoes — see the
+    honesty note in app/vessels.py."""
+    from app.vessels import get_vessel_snapshot
+
+    return get_vessel_snapshot()
+
+
 @router.get("/desk/warrant-stocks")
 def warrant_stocks(days: int = 180):
     """INE NR (TSR20) on-warrant warehouse stocks — daily tonnes + change,
@@ -164,6 +177,121 @@ def warrant_stocks(days: int = 180):
         "contract": "INE NR (TSR20, 上期能源-20号胶)",
         "source": "Exchange warrant figures via East Money datacenter (free public mirror)",
         "series": series,
+    }
+
+
+def _curve_shape(quotes: list[FuturesQuote]) -> str:
+    if len(quotes) < 2:
+        return "Flat"
+    diff = quotes[-1].price - quotes[0].price
+    if abs(diff) < 1:
+        return "Flat"
+    return "Contango" if diff > 0 else "Backwardation"
+
+
+@router.get("/desk/bulletin")
+def desk_bulletin(db: Session = Depends(get_db)):
+    """Executive morning briefing — every number assembled from data the desk
+    already stores or fetches from free official sources. Rule-based text
+    only; nothing here is model-written."""
+    from zoneinfo import ZoneInfo
+
+    now_ist = datetime.now(ZoneInfo(IST))
+
+    sgx = db.query(FuturesQuote).filter(FuturesQuote.market_tag == "TSR20").order_by(FuturesQuote.month_order.asc()).all()
+    shn = db.query(FuturesQuote).filter(FuturesQuote.market_tag == "SHNR").order_by(FuturesQuote.month_order.asc()).all()
+    cnyusd = db.query(FxRate).filter(FxRate.pair == "CNYUSD").first()
+
+    futures = None
+    if sgx:
+        front = sgx[0]
+        ine_usd = round(shn[0].price * cnyusd.rate, 1) if shn and cnyusd and cnyusd.rate else None
+        futures = {
+            "sgx_front_month": front.contract_month,
+            "sgx_price": front.price,
+            "sgx_close": front.close,
+            "sgx_change": round(front.price - front.close, 1) if front.close else None,
+            "sgx_curve": _curve_shape(sgx),
+            "ine_front_cny": shn[0].price if shn else None,
+            "ine_front_usd": ine_usd,
+            "ine_curve": _curve_shape(shn),
+            "exchange_spread": round(front.price - ine_usd, 1) if ine_usd else None,
+            "sgx_price_as_of": get_sgx_price_as_of(),
+        }
+
+    physicals = []
+    if sgx:
+        for spec in BASIS_SPECS:
+            row = _latest_physical(db, spec["location"], spec["grade"])
+            if row is None:
+                continue
+            usd_mt = round(row.usd * 10, 1)
+            physicals.append({**spec, "usd_mt": usd_mt, "price_date": row.price_date, "basis": round(usd_mt - sgx[0].price, 1)})
+
+    fx = [
+        {"pair": r.pair, "rate": r.rate, "change_pct": round((r.rate - r.prev_rate) / r.prev_rate * 100, 3) if r.prev_rate else None}
+        for r in db.query(FxRate).order_by(FxRate.pair.asc()).all()
+    ]
+
+    stocks = None
+    series = get_nr_warrant_stocks(180)
+    if series:
+        latest = series[-1]
+        month_ago = series[max(len(series) - 21, 0)]
+        lows = min(p["tonnes"] for p in series)
+        highs = max(p["tonnes"] for p in series)
+        stocks = {
+            "date": latest["date"],
+            "tonnes": latest["tonnes"],
+            "daily_change": latest["change"],
+            "month_change": latest["tonnes"] - month_ago["tonnes"],
+            "window_low": lows,
+            "window_high": highs,
+            # 0 = at the window low, 100 = at the high — a position, not a
+            # 5-year seasonal Z-score (free history only reaches ~3 months).
+            "window_position_pct": round((latest["tonnes"] - lows) / (highs - lows) * 100, 1) if highs > lows else None,
+        }
+
+    month = now_ist.month
+    if 2 <= month <= 4:
+        season = "Wintering (Feb–Apr): leaf shedding, tapping typically down 50–70%"
+    elif month >= 10:
+        season = "Peak tapping (Oct–Dec): maximum production window"
+    else:
+        season = "Normal tapping (between wintering and the Oct–Dec peak)"
+
+    rain_hit = []
+    for region in [r[0] for r in db.query(ClimateReading.region).distinct().all()]:
+        latest_r = (
+            db.query(ClimateReading)
+            .filter(ClimateReading.region == region)
+            .order_by(ClimateReading.reading_date.desc())
+            .first()
+        )
+        if latest_r and latest_r.rainfall_mm > 2:
+            rain_hit.append({"region": region, "rainfall_mm": latest_r.rainfall_mm})
+
+    since = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=24)
+    headlines = [
+        {"title": a.title, "source": a.source_name, "url": a.url}
+        for a in db.query(NewsArticle)
+        .filter(NewsArticle.market_tag == "TSR20", NewsArticle.published_at >= since)
+        .order_by(NewsArticle.published_at.desc())
+        .limit(5)
+        .all()
+    ]
+
+    return {
+        "generated_at": now_ist.isoformat(),
+        "edition": now_ist.strftime("%A, %d %B %Y"),
+        "futures": futures,
+        "physicals": physicals,
+        "fx": fx,
+        "stocks": stocks,
+        "tapping_season": season,
+        "rain_hit": rain_hit,
+        "enso": get_enso_state(),
+        "headlines": headlines,
     }
 
 

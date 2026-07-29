@@ -1,4 +1,4 @@
-import type { BasisSnapshot, BilateralFlow, ClimateReading, CountryBreakdownItem, EUImports, FuturesQuote, FxHistoryPoint, GradeFreshness, GradeSeries, LevelEventRecord, MarketOutlook, NewsArticleRecord, NewsCategory, PhysicalHistoryPoint, PhysicalPrices, PortRecord, PriceBoard, PriceCandle, PriceLevels, PriceTickRecord, QuoteUpdate, RegionSignal, StatusRecord, TradeBalance, TradeMovers, TradeTimeline, WarrantStocks } from "./types";
+import type { BasisSnapshot, BilateralFlow, DeskBulletin, ClimateReading, CountryBreakdownItem, EUImports, FuturesQuote, FxHistoryPoint, GradeFreshness, GradeSeries, LevelEventRecord, MarketOutlook, NewsArticleRecord, NewsCategory, PhysicalHistoryPoint, PhysicalPrices, PortRecord, PriceBoard, PriceCandle, PriceLevels, PriceTickRecord, QuoteUpdate, RegionSignal, StatusRecord, TradeBalance, TradeMovers, TradeTimeline, VesselSnapshot, WarrantStocks } from "./types";
 
 export class ApiError extends Error {
   status: number;
@@ -74,6 +74,8 @@ export const api = {
 
   getBasis: (days = 90) => request<BasisSnapshot>(`/desk/basis?days=${days}`),
   getWarrantStocks: (days = 180) => request<WarrantStocks>(`/desk/warrant-stocks?days=${days}`),
+  getBulletin: () => request<DeskBulletin>("/desk/bulletin"),
+  getVessels: () => request<VesselSnapshot>("/desk/vessels"),
   getPhysicalHistory: (location: string, grade: string, days = 90) =>
     request<PhysicalHistoryPoint[]>(
       `/desk/physical-history?location=${encodeURIComponent(location)}&grade=${encodeURIComponent(grade)}&days=${days}`

@@ -30,4 +30,9 @@ NEWS_API_KEY = os.environ.get("NEWS_API_KEY", "")
 # email. Leave blank to use the anonymous tier.
 TRANSLATE_EMAIL = os.environ.get("TRANSLATE_EMAIL", "")
 
+# Optional — aisstream.io free API key (user-registered). Powers the Vessel
+# Watch live AIS feed; leave blank and the tab reports itself unconfigured
+# instead of showing anything fake.
+AISSTREAM_KEY = os.environ.get("AISSTREAM_KEY", "")
+
 IST = "Asia/Kolkata"

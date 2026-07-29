@@ -27,6 +27,12 @@ async def lifespan(app: FastAPI):
         start_scheduler()
     except Exception:
         logger.exception("Failed to start scheduler — jobs will not run, but the API stays up")
+    try:
+        from app.vessels import start_vessel_watch
+
+        start_vessel_watch()
+    except Exception:
+        logger.exception("Vessel watch failed to start — the API stays up without it")
     yield
     shutdown_scheduler()
 

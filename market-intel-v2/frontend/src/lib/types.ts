@@ -360,3 +360,72 @@ export interface WarrantStocks {
   source: string;
   series: WarrantStockPoint[];
 }
+
+export interface BulletinFutures {
+  sgx_front_month: string;
+  sgx_price: number;
+  sgx_close: number;
+  sgx_change: number | null;
+  sgx_curve: string;
+  ine_front_cny: number | null;
+  ine_front_usd: number | null;
+  ine_curve: string;
+  exchange_spread: number | null;
+  sgx_price_as_of: string | null;
+}
+
+export interface BulletinStocks {
+  date: string;
+  tonnes: number;
+  daily_change: number;
+  month_change: number;
+  window_low: number;
+  window_high: number;
+  window_position_pct: number | null;
+}
+
+export interface EnsoState {
+  season: string;
+  year: number;
+  anomaly: number;
+  phase: string;
+}
+
+export interface DeskBulletin {
+  generated_at: string;
+  edition: string;
+  futures: BulletinFutures | null;
+  physicals: { label: string; grade: string; usd_mt: number; price_date: string; basis: number }[];
+  fx: { pair: string; rate: number; change_pct: number | null }[];
+  stocks: BulletinStocks | null;
+  tapping_season: string;
+  rain_hit: { region: string; rainfall_mm: number }[];
+  enso: EnsoState | null;
+  headlines: { title: string; source: string; url: string }[];
+}
+
+export interface VesselRecord {
+  name: string;
+  lat: number;
+  lon: number;
+  sog: number | null;
+  port: string;
+  seen: number;
+}
+
+export interface VesselPort {
+  port: string;
+  total: number;
+  anchored: number;
+  moving: number;
+  vessels: VesselRecord[];
+}
+
+export interface VesselSnapshot {
+  configured: boolean;
+  connected: boolean;
+  connected_since: number | null;
+  last_message_age_s: number | null;
+  anchored_sog_kn: number;
+  ports: VesselPort[];
+}
