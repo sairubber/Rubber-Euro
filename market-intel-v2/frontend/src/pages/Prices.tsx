@@ -574,7 +574,7 @@ export default function Prices() {
             <thead>
               <tr className="border-b border-border">
                 {["Month", "Current Market price (T)", "Change (ΔT)", "Open (O)", "High (H)", "Low (Lo)", "Volume (Vcon)", "Closing Price (L.S)"].map((h) => (
-                  <th key={h} className="kicker text-[9px] text-text-faint text-right first:text-left font-normal px-1.5 pb-2">
+                  <th key={h} className="kicker text-[9px] text-text-faint text-right first:text-left font-normal px-1.5 pb-2 whitespace-nowrap">
                     {h}
                   </th>
                 ))}
@@ -603,7 +603,7 @@ export default function Prices() {
             <thead>
               <tr className="border-b border-border">
                 {["Month", "Open Interest", "Change in OI", "% change in price", "Prev OI"].map((h) => (
-                  <th key={h} className="kicker text-[9px] text-text-faint text-right first:text-left font-normal px-1.5 pb-2">
+                  <th key={h} className="kicker text-[9px] text-text-faint text-right first:text-left font-normal px-1.5 pb-2 whitespace-nowrap">
                     {h}
                   </th>
                 ))}
@@ -662,7 +662,7 @@ export default function Prices() {
               <thead>
                 <tr className="border-b border-border">
                   {["Month", "Current Market price (T)", "Change (ΔT)", "Open (O)", "High (H)", "Low (Lo)", "Volume (Vcon)", "Closing Price (L.S)"].map((h) => (
-                    <th key={h} className="kicker text-[9px] text-text-faint text-right first:text-left font-normal px-1.5 pb-2">
+                    <th key={h} className="kicker text-[9px] text-text-faint text-right first:text-left font-normal px-1.5 pb-2 whitespace-nowrap">
                       {h}
                     </th>
                   ))}
@@ -691,7 +691,7 @@ export default function Prices() {
               <thead>
                 <tr className="border-b border-border">
                   {["Month", "Open Interest", "Change in OI", "% change in price", "Prev OI"].map((h) => (
-                    <th key={h} className="kicker text-[9px] text-text-faint text-right first:text-left font-normal px-1.5 pb-2">
+                    <th key={h} className="kicker text-[9px] text-text-faint text-right first:text-left font-normal px-1.5 pb-2 whitespace-nowrap">
                       {h}
                     </th>
                   ))}

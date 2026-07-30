@@ -93,17 +93,29 @@ def fetch_sgx_rows() -> list[dict]:
     resp = httpx.get(SGX_URL, params=params, headers=HEADERS, timeout=25)
     resp.raise_for_status()
     data = resp.json().get("data", [])
-    # Two rows per delivery month (T and T+1 sessions) — keep the T session,
-    # which is the one carrying prices.
+    # Two rows per delivery month — session "0" (T, day) and "1" (T+1,
+    # night). Always preferring session 0 froze the board at the day close
+    # for the whole night session (reported 2026-07-30). The honest pick is
+    # whichever row the exchange updated most recently AND that carries a
+    # usable price; a fresher-but-empty row must not shadow live numbers.
+    def lut(row: dict) -> str:
+        return row.get("last-update-time") or ""
+
+    def has_price(row: dict) -> bool:
+        return _pick(row, "last-trade-price", "daily-settlement-price", "preliminary-settlement-price", "best-bid-price") is not None
+
     by_month: dict[str, dict] = {}
     for row in data:
         month = row.get("delivery-month") or ""
         if not month:
             continue
-        if row.get("current-trading-session") == "0" or month not in by_month:
-            by_month.setdefault(month, row)
-            if row.get("current-trading-session") == "0":
-                by_month[month] = row
+        cur = by_month.get(month)
+        if cur is None:
+            by_month[month] = row
+            continue
+        # Rank: priced beats unpriced; among equals, the newer update wins.
+        if (has_price(row), lut(row)) > (has_price(cur), lut(cur)):
+            by_month[month] = row
     return [by_month[m] for m in sorted(by_month)][:BOARD_MONTHS]
 
 

@@ -68,13 +68,14 @@ function CurvePanel({ title, unit, quotes, note }: { title: string; unit: string
       </div>
       <DeskLineChart series={series} height={150} />
 
-      <table className="w-full mt-4 text-[12px]">
+      <div className="overflow-x-auto">
+      <table className="w-full min-w-[420px] mt-4 text-[12px]">
         <thead>
           <tr className="kicker text-[9px] text-text-faint border-b border-border-subtle">
-            <th className="text-left py-1.5 font-normal">Month</th>
-            <th className="text-right py-1.5 font-normal">Price</th>
-            <th className="text-right py-1.5 font-normal">Roll to next</th>
-            <th className="text-right py-1.5 font-normal" title="Annualized: (M1−M2)/M1 × 365/days between contracts. Positive = backwardation pays longs to roll.">
+            <th className="text-left py-1.5 font-normal whitespace-nowrap">Month</th>
+            <th className="text-right py-1.5 font-normal whitespace-nowrap">Price</th>
+            <th className="text-right py-1.5 font-normal whitespace-nowrap">Roll to next</th>
+            <th className="text-right py-1.5 font-normal whitespace-nowrap" title="Annualized: (M1−M2)/M1 × 365/days between contracts. Positive = backwardation pays longs to roll.">
               Roll yld %/yr
             </th>
             <th className="text-right py-1.5 font-normal">OI</th>
@@ -101,6 +102,7 @@ function CurvePanel({ title, unit, quotes, note }: { title: string; unit: string
           })}
         </tbody>
       </table>
+      </div>
       {rollSignal && (
         <p className="kicker text-[9px] text-amber border border-amber/25 px-2 py-1 mt-3 inline-block">{rollSignal}</p>
       )}
