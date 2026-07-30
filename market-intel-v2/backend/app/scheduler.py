@@ -411,21 +411,25 @@ def start_scheduler() -> None:
         replace_existing=True,
     )
 
-    # Poll SGX every minute and apply every pass straight to the board — the
-    # only latency left is the source's own (SGX's free feed is ~10-min
+    # Poll SGX every 30s and apply every pass straight to the board — the
+    # only latency left is the source's own (SGX's free feed is ~15-min
     # delayed by the exchange; real-time is a paid license, and every free
-    # aggregator redistributes this same delayed feed).
+    # aggregator redistributes this same delayed feed). 30s halves our own
+    # share of the lag without hammering Akamai.
     _scheduler.add_job(
         run_sgx_job,
-        IntervalTrigger(minutes=1, timezone=IST),
+        IntervalTrigger(seconds=30, timezone=IST),
         id="sgx_job",
         replace_existing=True,
     )
 
-    # Shanghai INE NR quotes via Sina — live feed, every minute like SGX.
+    # Shanghai INE NR quotes via Sina — a genuinely REAL-TIME feed, so
+    # polling faster here buys real freshness (unlike SGX where the
+    # exchange delay dominates). Sina's quote API serves this cadence to
+    # the public web at large.
     _scheduler.add_job(
         run_shanghai_job,
-        IntervalTrigger(minutes=1, timezone=IST),
+        IntervalTrigger(seconds=15, timezone=IST),
         id="shanghai_job",
         replace_existing=True,
     )
