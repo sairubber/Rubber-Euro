@@ -42,7 +42,7 @@ def get_nr0_kline() -> list[dict]:
     if cached and time.time() - cached_at < _TTL:
         return cached
     try:
-        resp = get_retry(KLINE_URL, headers=HEADERS, timeout=30)
+        resp = get_retry(KLINE_URL, headers=HEADERS, timeout=30, ipv4=True)
         m = re.search(r"var _t=\((.*)\)", resp.text, re.S)
         if not m:
             return cached

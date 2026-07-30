@@ -59,10 +59,19 @@ def _candidate_codes(n: int = 8) -> list[str]:
     return out
 
 
+# Force IPv4: sinajs sometimes resolves with an AAAA record first, and hosts
+# without an IPv6 route (Render) then die with errno 101 "Network is
+# unreachable" — observed in production 2026-07-30. Binding the local side to
+# 0.0.0.0 makes httpx use IPv4 only. transport retries=1 absorbs the
+# occasional reset on top.
+_transport = httpx.HTTPTransport(local_address="0.0.0.0", retries=1)
+
+
 def fetch_shanghai_rows() -> list[dict]:
     codes = _candidate_codes()
     symbols = ",".join(f"nf_NR{c}" for c in codes)
-    resp = httpx.get(SINA_URL + symbols, headers=HEADERS, timeout=15)
+    with httpx.Client(transport=_transport, timeout=15) as client:
+        resp = client.get(SINA_URL + symbols, headers=HEADERS)
     resp.raise_for_status()
     rows = []
     for code, line in zip(codes, resp.text.splitlines()):

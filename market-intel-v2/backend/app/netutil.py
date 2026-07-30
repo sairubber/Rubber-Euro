@@ -10,11 +10,29 @@ import time
 import httpx
 
 
-def get_retry(url: str, *, params=None, headers=None, timeout: float = 30, follow_redirects: bool = False, attempts: int = 2) -> httpx.Response:
+# Binding the local side to 0.0.0.0 forces IPv4 — some hosts (sina) publish
+# AAAA records that die with errno 101 on IPv6-less networks like Render.
+_ipv4_transport = httpx.HTTPTransport(local_address="0.0.0.0", retries=1)
+
+
+def get_retry(
+    url: str,
+    *,
+    params=None,
+    headers=None,
+    timeout: float = 30,
+    follow_redirects: bool = False,
+    attempts: int = 2,
+    ipv4: bool = False,
+) -> httpx.Response:
     last: Exception | None = None
     for attempt in range(1, attempts + 1):
         try:
-            resp = httpx.get(url, params=params, headers=headers, timeout=timeout, follow_redirects=follow_redirects)
+            if ipv4:
+                with httpx.Client(transport=_ipv4_transport, timeout=timeout, follow_redirects=follow_redirects) as client:
+                    resp = client.get(url, params=params, headers=headers)
+            else:
+                resp = httpx.get(url, params=params, headers=headers, timeout=timeout, follow_redirects=follow_redirects)
             resp.raise_for_status()
             return resp
         except Exception as exc:  # noqa: BLE001 — caller's cache-fallback handles the re-raise

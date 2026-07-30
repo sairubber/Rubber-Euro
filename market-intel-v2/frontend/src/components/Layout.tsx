@@ -157,9 +157,12 @@ export default function Layout() {
           <div className="max-w-[1600px] mx-auto px-2 md:px-8 flex items-center overflow-x-auto">
             <div className="flex items-center gap-1 mx-auto">
             {NAV_GROUPS.map((group, gi) => (
-              <div key={group.label} className="flex items-center">
+              // shrink-0 on the GROUP too — the links inside already refuse
+              // to shrink, so a squeezable group wrapper just lets them
+              // overflow onto the next group (the mobile overlap bug).
+              <div key={group.label} className="flex items-center shrink-0">
                 {gi > 0 && (
-                  <span className="kicker text-[9px] text-text-faint px-3 select-none" aria-hidden="true">
+                  <span className="kicker text-[9px] text-text-faint px-3 select-none shrink-0" aria-hidden="true">
                     /
                   </span>
                 )}
