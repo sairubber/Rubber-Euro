@@ -84,23 +84,9 @@ export default function Layout() {
 
       <header className="border-b border-rule">
         <div className="max-w-[1600px] mx-auto px-4 md:px-8 pt-6 pb-5">
-          <div className="flex items-center justify-between gap-4 mb-5 flex-wrap">
-            {/* Company mark, top-left. */}
-            <div className="flex items-center gap-4 min-w-0">
-              <a href="https://saicommodities.co.uk" target="_blank" rel="noopener noreferrer" className="shrink-0">
-                <img src="/sai-logo.png" alt="Sai Commodities — Growing together in global trading" className="h-9 md:h-11 w-auto" />
-              </a>
-              <div className="hidden md:flex flex-col kicker text-[10px] text-text-faint leading-relaxed">
-                <a href="mailto:enquiries@saicommodities.co.uk" className="hover:text-accent transition-colors normal-case tracking-normal font-sans">
-                  ✉ enquiries@saicommodities.co.uk
-                </a>
-                <a href="tel:+442086801508" className="hover:text-accent transition-colors normal-case tracking-normal font-sans">
-                  ✆ +44 20 8680 1508
-                </a>
-              </div>
-            </div>
-
-            {/* Edition date + desk status, top-right. */}
+          <div className="flex items-center justify-end gap-4 mb-5 flex-wrap">
+            {/* Edition date + desk status, top-right. Company branding was
+                removed at the desk's request (2026-07-30). */}
             <div className="flex flex-col items-end gap-1 kicker text-[10px] text-text-faint">
               <span>{todayEdition()} · IST Edition</span>
               <div className="flex items-center gap-3">
@@ -201,7 +187,7 @@ export default function Layout() {
 
       <footer className="border-t border-rule mt-auto">
         <div className="max-w-[1600px] mx-auto px-4 md:px-8 py-8 kicker text-[10px] text-text-faint text-center">
-          The Rubber Desk · Sai Commodities — real news aggregated from public sources. Not investment advice. Research &amp; display only.
+          The Rubber Desk — real news aggregated from public sources. Not investment advice. Research &amp; display only.
         </div>
       </footer>
     </div>
