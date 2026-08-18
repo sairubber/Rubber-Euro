@@ -51,8 +51,8 @@ MARKET_RELEVANCE = {
     # gate below still requires a production/sales/price word, so model
     # reviews and launch coverage stay out.
     "TSR20": re.compile(
-        r"\b(rubber|tyre|tire|latex|tsr\s?20|sicom|plantation"
-        r"|(car|auto|vehicle|truck|ev) (production|output|sales)"
+        r"\b(rubber|tyres?|tires?|latex|tsr\s?20|sicom|plantation"
+        r"|(car|auto|vehicle|truck|ev|pv) (production|output|(retail |wholesale )?sales)"
         r"|automaker|carmaker|auto industry)\b",
         re.IGNORECASE,
     ),
@@ -110,9 +110,16 @@ OTHER_FX_PAIRS = re.compile(
 )
 
 
-def is_market_news(title: str, description: str, market: str) -> bool:
+def is_market_news(title: str, description: str, market: str, headline_only: bool = False) -> bool:
     """Stricter gate for publisher feeds: the item must be about the market,
-    not merely mention the commodity."""
+    not merely mention the commodity.
+
+    headline_only: Google site-index fallback items arrive with an empty
+    description (Google's RSS strips it), so demanding a MARKET_SIGNAL word
+    from the title alone would drop nearly every legitimate story — measured
+    0/10 survivors on a tyrepress batch that the direct feed passed. Those
+    items keep every subject/title rule but skip the signal requirement,
+    matching how Google-query items are already gated."""
     text = f"{title} {description}"
     if market == "TSR20":
         if SYNTHETIC_RUBBER.search(text):
@@ -132,6 +139,8 @@ def is_market_news(title: str, description: str, market: str) -> bool:
     subject = MARKET_RELEVANCE.get(market)
     if subject and not subject.search(text):
         return False
+    if headline_only:
+        return True
     return bool(MARKET_SIGNAL.search(text))
 
 

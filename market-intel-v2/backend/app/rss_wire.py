@@ -105,16 +105,39 @@ def _parse_date(raw: str | None) -> datetime:
         return datetime.now(timezone.utc)
 
 
+def _google_site_fallback(feed_url: str, market: str, category: str, max_items: int) -> list[dict]:
+    """Same publisher, read through Google News' index instead of the
+    publisher's own feed. Cloudflare-fronted feeds (tyrepress, just-auto)
+    serve residential IPs fine but reject datacenter egress — on Render they
+    fail/return empty while Google, which is reachable there, has the same
+    stories indexed within minutes. Google links are opaque redirects (so no
+    bullets/images downstream), but a headline that lands beats a story that
+    never arrives."""
+    from app.news_scraper import fetch_google_news
+
+    m = re.match(r"https?://(?:www\.)?([^/]+)", feed_url)
+    if not m:
+        return []
+    items = fetch_google_news(f"site:{m.group(1)} when:2d", max_items=max_items)
+    for item in items:
+        item["market_tag"] = market
+        item["category"] = category
+    if items:
+        logger.info("Feed %s recovered via Google site-index: %d items", feed_url, len(items))
+    return items
+
+
 def fetch_feed(url: str, market: str, category: str, max_items: int = 20) -> list[dict]:
-    """Parse one publisher feed. Returns [] on any failure — one dead feed
-    must never stop the pass."""
+    """Parse one publisher feed. Falls back to the Google News site-index for
+    that domain on any failure or empty result — one dead feed must never
+    stop the pass, and a blocked feed must still deliver its stories."""
     try:
         resp = _http.get(url, timeout=25)
         resp.raise_for_status()
         root = ElementTree.fromstring(resp.text)
     except Exception:
-        logger.warning("RSS feed failed: %s", url)
-        return []
+        logger.warning("RSS feed failed: %s — trying Google site-index", url)
+        return _google_site_fallback(url, market, category, max_items)
 
     items = []
     for item in root.findall(".//item")[:max_items]:
@@ -134,6 +157,8 @@ def fetch_feed(url: str, market: str, category: str, max_items: int = 20) -> lis
                 "published_at": _parse_date(item.findtext("pubDate")),
             }
         )
+    if not items:
+        return _google_site_fallback(url, market, category, max_items)
     return items
 
 

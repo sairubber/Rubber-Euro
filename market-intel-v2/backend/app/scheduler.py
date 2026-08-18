@@ -274,7 +274,16 @@ def run_news_scrape_job(enrich: bool = True) -> None:
         # the Google-News-backed queries also means title-dedup keeps the
         # readable copy of any story both sources carry.
         for label, batch in iter_rss_batches():
-            kept = [a for a in batch if is_market_news(a["title"], a["description"], a["market_tag"])]
+            kept = [
+                a
+                for a in batch
+                if is_market_news(
+                    a["title"],
+                    a["description"],
+                    a["market_tag"],
+                    headline_only="news.google" in a["url"],
+                )
+            ]
             logger.info("RSS batch %s: %d of %d are market news", label, len(kept), len(batch))
             commit_batch(kept)
 
