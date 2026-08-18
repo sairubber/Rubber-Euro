@@ -145,8 +145,14 @@ def run_climate_job() -> None:
         db.close()
 
 
-def run_news_scrape_job() -> None:
+def run_news_scrape_job(enrich: bool = True) -> None:
     """Real news, zero cost: Google News RSS + GDELT (always) + NewsAPI.org (if a key is set).
+
+    enrich=False is the fast lane: headlines/descriptions/translation only,
+    skipping the per-article Jina + image + meta fetches that dominate wall
+    time. Used on startup so a fresh (ephemeral) database shows a full wall
+    in minutes; the enrichment backfill below then fills bullets and images
+    progressively.
     Every individual query is isolated (see news_scraper) so one bad fetch never
     stops the rest of the pass, and results are committed batch-by-batch as
     they come in — a crash or restart mid-pass only loses the current batch,
@@ -184,7 +190,7 @@ def run_news_scrape_job() -> None:
             # resolve it anyway). Full text is what makes bullet points
             # possible — a meta description only ever yields one sentence.
             readable = [a for a in candidates if "news.google.com" not in a["url"]]
-            if readable:
+            if readable and enrich:
                 with FetchPool(max_workers=4) as pool:
                     texts = pool.map(lambda a: fetch_full_text(a["url"]), readable)
                     for a, full_text in zip(readable, texts):
@@ -199,7 +205,7 @@ def run_news_scrape_job() -> None:
             # Lead images, same real-URL population. A card with neither
             # bullets nor an image is just a headline floating in dead
             # space — this is what fills it.
-            if readable:
+            if readable and enrich:
                 with FetchPool(max_workers=6) as pool:
                     pages = pool.map(lambda a: fetch_article_page(a["url"]), readable)
                     for a, page in zip(readable, pages):
@@ -211,7 +217,7 @@ def run_news_scrape_job() -> None:
             # Meta-description fallback for whatever still has no summary
             # (Google-redirect articles, and pages Jina couldn't render).
             need_desc = [a for a in candidates if not a.get("description")]
-            if need_desc:
+            if need_desc and enrich:
                 with FetchPool(max_workers=6) as pool:
                     descriptions = pool.map(lambda a: fetch_meta_description(a["url"]), need_desc)
                     for a, meta_desc in zip(need_desc, descriptions):
@@ -272,7 +278,7 @@ def run_news_scrape_job() -> None:
             logger.info("RSS batch %s: %d of %d are market news", label, len(kept), len(batch))
             commit_batch(kept)
 
-        for batch in iter_niche_query_batches():
+        for batch in iter_niche_query_batches(include_gdelt=enrich):
             commit_batch(batch)
 
         for market in ("TSR20", "EURUSD"):
@@ -307,9 +313,33 @@ def run_news_scrape_job() -> None:
                 image = extract_image(page, article.url)
                 article.image_url = image or ""
                 healed += bool(image)
-            if imageless:
+
+            # Bullet backfill — fast-lane articles land without key points;
+            # this sweep gives the freshest of them the full treatment.
+            pointless = (
+                db.query(NewsArticle)
+                .filter(
+                    NewsArticle.market_tag == "TSR20",
+                    NewsArticle.key_points.is_(None),
+                    NewsArticle.published_at >= datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=48),
+                    NewsArticle.url.notlike("%news.google%"),
+                )
+                .order_by(NewsArticle.published_at.desc())
+                .limit(10)
+                .all()
+            )
+            pointed = 0
+            for article in pointless:
+                full_text = fetch_full_text(article.url)
+                if not full_text:
+                    article.key_points = ""  # tried; don't retry forever
+                    continue
+                points = extract_key_points(full_text)
+                article.key_points = "\n".join(points) if points else ""
+                pointed += bool(points)
+            if imageless or pointless:
                 db.commit()
-                logger.info("Image backfill: %d of %d recent imageless articles healed", healed, len(imageless))
+                logger.info("Backfill: %d/%d images, %d/%d bullet sets healed", healed, len(imageless), pointed, len(pointless))
         except Exception:
             logger.exception("Image backfill failed — continuing")
             db.rollback()
@@ -403,8 +433,13 @@ def _check_and_run_startup_jobs() -> None:
     threading.Thread(target=run_physical_job, daemon=True).start()
 
     if not has_news:
-        logger.info("No news found on startup, running an initial scrape")
-        threading.Thread(target=run_news_scrape_job, daemon=True).start()
+        logger.info("No news found on startup: fast pass first, then full enrichment")
+
+        def _startup_news() -> None:
+            run_news_scrape_job(enrich=False)  # wall fills in minutes
+            run_news_scrape_job(enrich=True)   # bullets/images follow
+
+        threading.Thread(target=_startup_news, daemon=True).start()
     if not has_climate:
         threading.Thread(target=run_climate_job, daemon=True).start()
     if not has_trade:

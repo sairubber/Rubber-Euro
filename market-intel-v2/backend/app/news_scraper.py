@@ -332,7 +332,7 @@ def fetch_gdelt(query: str, max_items: int = 12) -> list[dict]:
     return items
 
 
-def iter_niche_query_batches():
+def iter_niche_query_batches(include_gdelt: bool = True):
     """Run every configured niche query, against both sources, for every market
     — yielding one batch (list[dict]) per query so the caller can commit
     incrementally. A full pass touches ~50 external requests; yielding as we
@@ -375,14 +375,19 @@ def iter_niche_query_batches():
         # stored with a publisher URL got a real summary 88% of the time,
         # Google-redirect articles 0%. Preferring GDELT is what makes
         # summaries possible at all.
-        for article in fetch_gdelt(query):
-            if relevance and not relevance.search(article["title"]):
-                continue
-            article["market_tag"] = market
-            article["category"] = category
-            batch.append(article)
+        # include_gdelt=False is the fast lane: GDELT answers in ~10s per
+        # query (it throttles free callers), which is what turned a fresh
+        # database's first fill into an hour-plus. Google alone answers in
+        # under a second per query.
+        if include_gdelt:
+            for article in fetch_gdelt(query):
+                if relevance and not relevance.search(article["title"]):
+                    continue
+                article["market_tag"] = market
+                article["category"] = category
+                batch.append(article)
 
-        time.sleep(2.0)
+            time.sleep(2.0)
         # Google News still runs — its coverage is broader, and it is the
         # only source for plenty of regional trade stories. It just no
         # longer displaces a GDELT copy of the same headline.
