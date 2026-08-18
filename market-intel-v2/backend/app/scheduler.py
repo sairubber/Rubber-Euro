@@ -1,7 +1,7 @@
 import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor as FetchPool
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from apscheduler.executors.pool import ThreadPoolExecutor
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -277,6 +277,44 @@ def run_news_scrape_job() -> None:
 
         for market in ("TSR20", "EURUSD"):
             commit_batch(fetch_market_news(market))
+
+        # Image backfill: the upgraded extractor (JSON-LD + sized content
+        # <img> fallbacks) recovers photos the old meta-tags-only pass
+        # missed. A small capped sweep per pass slowly heals the recent wall
+        # without re-crawling the whole archive.
+        db = SessionLocal()
+        try:
+            week_ago = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=7)
+            imageless = (
+                db.query(NewsArticle)
+                .filter(
+                    NewsArticle.market_tag == "TSR20",
+                    NewsArticle.image_url.is_(None),
+                    NewsArticle.published_at >= week_ago,
+                    NewsArticle.url.notlike("%news.google%"),
+                )
+                .order_by(NewsArticle.published_at.desc())
+                .limit(8)
+                .all()
+            )
+            healed = 0
+            for article in imageless:
+                page = fetch_article_page(article.url)
+                if not page:
+                    # Mark unfetchable so the sweep doesn't retry it forever.
+                    article.image_url = ""
+                    continue
+                image = extract_image(page, article.url)
+                article.image_url = image or ""
+                healed += bool(image)
+            if imageless:
+                db.commit()
+                logger.info("Image backfill: %d of %d recent imageless articles healed", healed, len(imageless))
+        except Exception:
+            logger.exception("Image backfill failed — continuing")
+            db.rollback()
+        finally:
+            db.close()
 
         _last_scrape_at = datetime.now(timezone.utc)
         _last_scrape_added = total_added

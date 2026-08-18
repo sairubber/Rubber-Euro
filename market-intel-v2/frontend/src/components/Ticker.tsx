@@ -10,7 +10,9 @@ export function Ticker() {
   const results = useQueries({
     queries: MARKETS.map((m) => ({
       queryKey: ["ticker", m.code],
-      queryFn: () => api.getNewsHistory(m.code, { limit: 6 }),
+      // 24h gate — the ticker sits on every page and must never scroll
+      // stale headlines (weekends can leave it empty; that's honest).
+      queryFn: () => api.getNewsHistory(m.code, { limit: 6, hours: 24 }),
       refetchInterval: 120_000, refetchIntervalInBackground: true,
       staleTime: 60_000,
     })),

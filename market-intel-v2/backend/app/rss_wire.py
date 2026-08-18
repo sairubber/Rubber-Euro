@@ -64,8 +64,19 @@ FEEDS: list[tuple[str, str, str]] = [
     ("https://e.vnexpress.net/rss/business.rss", "TSR20", "headline"),
     ("https://www.freemalaysiatoday.com/category/business/feed/", "TSR20", "headline"),
     ("https://www.channelnewsasia.com/api/v1/rss-outbound-feed?_format=xml&category=6936", "TSR20", "headline"),
+    # Indian commodities press — Kottayam/rubber-board coverage lives here.
+    ("https://www.thehindubusinessline.com/markets/commodities/feeder/default.rss", "TSR20", "headline"),
+    # Auto/tire industry press — the demand side of the NR balance. The
+    # is_market_news gate keeps only the rubber/tire-relevant stories out of
+    # these general auto feeds.
+    ("https://carnewschina.com/feed/", "TSR20", "headline"),
+    ("https://www.paultan.org/feed/", "TSR20", "headline"),
+    ("https://www.electrive.com/feed/", "TSR20", "headline"),
+    ("https://www.just-auto.com/feed/", "TSR20", "headline"),
     # Shipping/logistics — freight shocks are rubber-supply shocks.
     ("https://gcaptain.com/feed/", "TSR20", "disruption"),
+    ("https://splash247.com/feed/", "TSR20", "disruption"),
+    ("https://theloadstar.com/feed/", "TSR20", "disruption"),
     # EUR/USD
     ("https://www.fxstreet.com/rss/news", "EURUSD", "headline"),
     ("https://www.forexlive.com/feed/news", "EURUSD", "headline"),
@@ -139,24 +150,65 @@ def fetch_article_page(url: str) -> str | None:
         return None
 
 
+# Readability-lite fallback pieces: strip the non-content skeleton, prefer
+# the <article> block when the publisher marks one, then keep substantial
+# paragraphs. Runs only when Jina fails — Jina's extraction is better, this
+# keeps the bullet pipeline alive through its rate limits and hiccups.
+_SKELETON_RE = re.compile(r"<(script|style|nav|header|footer|aside|form|noscript)[^>]*>.*?</\1>", re.IGNORECASE | re.DOTALL)
+_ARTICLE_RE = re.compile(r"<article[^>]*>(.*?)</article>", re.IGNORECASE | re.DOTALL)
+_P_RE = re.compile(r"<p[^>]*>(.*?)</p>", re.IGNORECASE | re.DOTALL)
+_TAG_STRIP_RE = re.compile(r"<[^>]+>")
+_PAYWALL_RE = re.compile(
+    r"(subscribe to (read|continue)|sign in to (read|continue)|create a free account to"
+    r"|this content is for (members|subscribers)|register to continue)",
+    re.IGNORECASE,
+)
+
+
+def _extract_text_from_html(page_html: str) -> str | None:
+    """Own-extraction fallback: the article's substantial paragraphs as plain
+    text. Feeds the analyzer only — never displayed as a full article."""
+    import html as html_module
+
+    body = _SKELETON_RE.sub(" ", page_html)
+    scope = _ARTICLE_RE.search(body)
+    if scope:
+        body = scope.group(1)
+    paragraphs = []
+    for m in _P_RE.finditer(body):
+        text = html_module.unescape(_TAG_STRIP_RE.sub(" ", m.group(1)))
+        text = re.sub(r"\s+", " ", text).strip()
+        if len(text) >= 60:
+            paragraphs.append(text)
+    joined = "\n\n".join(paragraphs)
+    if len(joined) < 300 or _PAYWALL_RE.search(joined[:600]):
+        return None  # a stub or a paywall teaser would make garbage bullets
+    return joined[:20000]
+
+
 def fetch_full_text(url: str) -> str | None:
-    """Whole article as markdown via Jina Reader. This is what turns a
-    headline into bullet points — the meta-description path only ever gave
-    one sentence, and only when the publisher bothered to set the tag."""
+    """Whole article as markdown via Jina Reader, with an own-extraction
+    fallback when Jina fails. This is what turns a headline into bullet
+    points — the meta-description path only ever gave one sentence, and only
+    when the publisher bothered to set the tag."""
     try:
         time.sleep(JINA_PACING_SECONDS)
         resp = _http.get(JINA_READER + url, timeout=JINA_TIMEOUT)
-        if resp.status_code != 200:
-            return None
-        text = resp.text
-        # Jina prefixes "Title:/URL Source:/Published Time:/Markdown Content:";
-        # the analyzer wants the body, not that envelope.
-        marker = "Markdown Content:"
-        if marker in text:
-            text = text.split(marker, 1)[1]
-        return text.strip() or None
+        if resp.status_code == 200:
+            text = resp.text
+            # Jina prefixes "Title:/URL Source:/Published Time:/Markdown
+            # Content:"; the analyzer wants the body, not that envelope.
+            marker = "Markdown Content:"
+            if marker in text:
+                text = text.split(marker, 1)[1]
+            text = text.strip()
+            if text:
+                return text
     except Exception:
-        return None
+        pass
+
+    page = fetch_article_page(url)
+    return _extract_text_from_html(page) if page else None
 
 
 def iter_rss_batches():

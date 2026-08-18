@@ -72,6 +72,30 @@ export default function WarrantStocks() {
         />
       </div>
 
+      {/* China rubber-complex context: SHFE RU (whole-latex). Not TSR20 —
+          shown because China's onshore balance moves both boards. */}
+      {data.ru.series.length > 0 && (
+        <div className="border border-border-subtle bg-surface p-5">
+          <div className="flex items-baseline justify-between flex-wrap gap-2 mb-1">
+            <p className="kicker text-[10px] text-text-faint">China context — SHFE RU warrants (whole-latex, NOT TSR20)</p>
+            <span className="num text-sm font-bold text-text">
+              {data.ru.series[data.ru.series.length - 1].tonnes.toLocaleString()} t
+              <span className="kicker text-[9px] text-text-faint font-normal ml-1">{data.ru.series[data.ru.series.length - 1].date}</span>
+            </span>
+          </div>
+          <p className="text-[11px] text-text-faint mb-3">
+            The RU contract deliverable is whole-latex/sheet — a different grade family — but it is China's biggest
+            rubber inventory pool, and the onshore balance it reflects moves the NR board too.
+          </p>
+          <DeskLineChart
+            series={[{ key: "ru", label: "SHFE RU warrants (t)", color: "#9d6f1d", points: data.ru.series.map((p) => ({ x: p.date.slice(5), y: p.tonnes })) }]}
+            height={160}
+          />
+        </div>
+      )}
+
+      <p className="text-[11px] text-text-faint">{data.sg_note}</p>
+
       <div className="pt-4 border-t border-rule text-[11px] text-text-faint leading-relaxed">
         <span className="kicker text-[10px] text-text-dim mr-1">Source:</span>
         {data.source}. These are the exchange's own daily on-warrant figures for the INE 20号胶 (NR/TSR20) contract; the

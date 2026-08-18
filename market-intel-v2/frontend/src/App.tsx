@@ -17,6 +17,8 @@ const OriginDesk = lazy(() => import("@/pages/OriginDesk"));
 const LandedCost = lazy(() => import("@/pages/LandedCost"));
 const WarrantStocks = lazy(() => import("@/pages/WarrantStocks"));
 const DeskBulletin = lazy(() => import("@/pages/DeskBulletin"));
+const DeskRisk = lazy(() => import("@/pages/DeskRisk"));
+const DeskVerdict = lazy(() => import("@/pages/DeskVerdict"));
 const VesselWatch = lazy(() => import("@/pages/VesselWatch"));
 
 function PageFallback() {
@@ -106,6 +108,22 @@ export default function App() {
           element={
             <Suspense fallback={<PageFallback />}>
               <VesselWatch />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/desk/verdict"
+          element={
+            <Suspense fallback={<PageFallback />}>
+              <DeskVerdict />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/desk/risk"
+          element={
+            <Suspense fallback={<PageFallback />}>
+              <DeskRisk />
             </Suspense>
           }
         />

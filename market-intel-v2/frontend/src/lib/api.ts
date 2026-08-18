@@ -1,4 +1,4 @@
-import type { BasisSnapshot, BilateralFlow, DeskBulletin, ClimateReading, CountryBreakdownItem, EUImports, FuturesQuote, FxHistoryPoint, GradeFreshness, GradeSeries, LevelEventRecord, MarketOutlook, NewsArticleRecord, NewsCategory, PhysicalHistoryPoint, PhysicalPrices, PortRecord, PriceBoard, PriceCandle, PriceLevels, PriceTickRecord, QuoteUpdate, RegionSignal, StatusRecord, TradeBalance, TradeMovers, TradeTimeline, ThaiFob, PortWatchData, IneSeasonality, SpreadHistory, VesselSearchResult, VesselSnapshot, WarrantStocks } from "./types";
+import type { BasisSnapshot, BilateralFlow, DeskBulletin, DeskVerdict, ClimateReading, CountryBreakdownItem, EUImports, FuturesQuote, FxHistoryPoint, GradeFreshness, GradeSeries, LevelEventRecord, MarketOutlook, NewsArticleRecord, NewsCategory, PhysicalHistoryPoint, PhysicalPrices, PortRecord, PriceBoard, PriceCandle, PriceLevels, PriceTickRecord, QuoteUpdate, RegionSignal, StatusRecord, TradeBalance, TradeMovers, TradeTimeline, ThaiFob, PortWatchData, IneSeasonality, RiskPack, SpreadHistory, VesselSearchResult, VesselSnapshot, WarrantStocks } from "./types";
 
 export class ApiError extends Error {
   status: number;
@@ -80,6 +80,8 @@ export const api = {
   getSpreadHistory: (days = 180) => request<SpreadHistory>(`/desk/spread-history?days=${days}`),
   searchVessels: (q: string) => request<VesselSearchResult>(`/desk/vessel-search?q=${encodeURIComponent(q)}`),
   getIneSeasonality: () => request<IneSeasonality>("/desk/ine-seasonality"),
+  getRisk: () => request<RiskPack>("/desk/risk"),
+  getVerdict: () => request<DeskVerdict>("/desk/verdict"),
   getPhysicalHistory: (location: string, grade: string, days = 90) =>
     request<PhysicalHistoryPoint[]>(
       `/desk/physical-history?location=${encodeURIComponent(location)}&grade=${encodeURIComponent(grade)}&days=${days}`

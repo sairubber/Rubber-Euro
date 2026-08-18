@@ -45,8 +45,16 @@ PRODUCING_COUNTRIES = [
 # precise, so this gate applies to GDELT results only: the article must
 # actually mention the market's subject somewhere in its title.
 MARKET_RELEVANCE = {
+    # Beyond the commodity itself, the demand side counts: car/truck
+    # PRODUCTION and SALES stories are NR-demand records even when the word
+    # "tire" never appears (~70% of NR goes into tires). The MARKET_SIGNAL
+    # gate below still requires a production/sales/price word, so model
+    # reviews and launch coverage stay out.
     "TSR20": re.compile(
-        r"\b(rubber|tyre|tire|latex|tsr\s?20|sicom|plantation)\b", re.IGNORECASE
+        r"\b(rubber|tyre|tire|latex|tsr\s?20|sicom|plantation"
+        r"|(car|auto|vehicle|truck|ev) (production|output|sales)"
+        r"|automaker|carmaker|auto industry)\b",
+        re.IGNORECASE,
     ),
     "EURUSD": re.compile(
         r"\b(euro(zone)?|dollar|eur\s?/?\s?usd|ecb|fed|federal reserve|forex|exchange rate"
@@ -159,6 +167,19 @@ NICHE_QUERIES: dict[str, list[tuple[str, str]]] = {
         ("EUDR rubber deforestation regulation", "trade"),
         ("Michelin OR Bridgestone OR Goodyear natural rubber", "headline"),
         ("rubber glove latex demand industry", "headline"),
+        # Demand side — car/tire manufacturing is ~70% of NR consumption.
+        ("China tire factory operating rate OR Shandong tyre plant", "trade"),
+        ("tire plant expansion OR new tyre factory investment", "trade"),
+        ("heavy truck sales China OR commercial vehicle sales tires", "headline"),
+        ("China auto production CAAM vehicle output", "headline"),
+        ("India tyre demand MRF OR Apollo Tyres OR CEAT rubber", "headline"),
+        ("EV electric vehicle tire demand rubber", "headline"),
+        ("tyre maker rubber procurement raw material cost", "trade"),
+        ("US tire imports tariff OR tyre import duty", "trade"),
+        ("Europe car production output tyre demand", "headline"),
+        ("Japan carmaker production output Toyota tires", "headline"),
+        ("Pirelli OR Continental OR Hankook OR Sumitomo natural rubber", "headline"),
+        ("tyre replacement aftermarket demand", "headline"),
         # Climate → supply: the direct weather/production channel.
         ("climate change rubber production drought", "disruption"),
         ("El Nino OR La Nina rubber Southeast Asia", "disruption"),

@@ -63,15 +63,6 @@ export default function Dashboard() {
   const gridRef = useReveal();
   const wireRef = useReveal();
 
-  const latestQueries = useQueries({
-    queries: MARKETS.map((m) => ({
-      queryKey: ["latest-news", m.code],
-      queryFn: () => api.getLatestNews(m.code),
-      refetchInterval: 60_000, refetchIntervalInBackground: true,
-      retry: false,
-    })),
-  });
-
   const historyQueries = useQueries({
     queries: MARKETS.map((m) => ({
       queryKey: ["news-history", m.code],
@@ -84,18 +75,16 @@ export default function Dashboard() {
   const { data: balance } = useQuery({ queryKey: ["trade-balance"], queryFn: api.getTradeBalance });
   const { data: outlook } = useQuery({ queryKey: ["outlook"], queryFn: api.getMarketOutlook });
 
-  const anyLoading = latestQueries.some((q) => q.isLoading);
-  const records = latestQueries
-    .map((q) => (q.data as NewsArticleRecord | undefined) ?? null)
-    .filter((r): r is NewsArticleRecord => !!r)
+  const anyLoading = historyQueries.some((q) => q.isLoading);
+  // Hero comes from the same 24h-gated list as everything else — the old
+  // getLatestNews hero had no time gate, so a quiet wire put a days-old
+  // story at the top of the front page (reported 2026-08-18).
+  const merged: NewsArticleRecord[] = historyQueries
+    .flatMap((q) => (q.data as NewsArticleRecord[] | undefined) ?? [])
     .sort((a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime());
 
-  const hero = records[0];
-
-  const allFeed: NewsArticleRecord[] = historyQueries
-    .flatMap((q) => (q.data as NewsArticleRecord[] | undefined) ?? [])
-    .sort((a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime())
-    .filter((item) => item.id !== hero?.id);
+  const hero = merged[0];
+  const allFeed = merged.filter((item) => item.id !== hero?.id);
 
   // Image-led slots get image-bearing stories first. Only a minority of
   // sources expose an og:image (see README), so picking purely by recency

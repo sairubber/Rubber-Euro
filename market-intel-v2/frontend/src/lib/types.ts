@@ -361,6 +361,8 @@ export interface WarrantStocks {
   contract: string;
   source: string;
   series: WarrantStockPoint[];
+  ru: { contract: string; series: WarrantStockPoint[] };
+  sg_note: string;
 }
 
 export interface BulletinFutures {
@@ -521,4 +523,40 @@ export interface VesselSearchMatch {
 export interface VesselSearchResult {
   query: string;
   matches: VesselSearchMatch[];
+}
+
+export interface RiskPack {
+  sgx: {
+    front_price: number | null;
+    vol_20d_pct: number | null;
+    vol_60d_pct: number | null;
+    max_drawdown_6m_pct: number;
+    last_return_pct: number | null;
+    returns_60d: number[];
+  };
+  ine: { vol_20d_pct: number | null; atr14_cny: number | null };
+  brent: { last: number | null; date: string | null; nr_brent_ratio: number | null; corr_60d: number | null };
+  tsi: { last: number | null; date: string | null; yoy_pct: number | null; series: { date: string; value: number }[] };
+  contracts: { sgx_tf_lot_tonnes: number; ine_nr_lot_tonnes: number };
+  note: string;
+}
+
+export interface VerdictSignal {
+  name: string;
+  reading: string;
+  direction: number;
+  weight: number;
+  reason: string;
+  group: "price" | "inventory" | "supply" | "demand";
+}
+
+export interface DeskVerdict {
+  generated_at: string;
+  verdict: string;
+  score: number;
+  signal_agreement_pct: number;
+  summary: string;
+  groups: Record<string, { net: number; count: number }>;
+  signals: VerdictSignal[];
+  method: string;
 }

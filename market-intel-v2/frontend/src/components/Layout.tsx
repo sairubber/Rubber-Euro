@@ -28,12 +28,14 @@ const NAV_GROUPS = [
   {
     label: "Desk",
     items: [
+      { to: "/desk/verdict", label: "Verdict", end: false, active: "border-accent text-accent" },
       { to: "/desk/bulletin", label: "Bulletin", end: false, active: "border-accent text-accent" },
       { to: "/desk/basis", label: "Basis & Spreads", end: false, active: "border-tsr20 text-tsr20" },
       { to: "/desk/vessels", label: "Vessels", end: false, active: "border-tsr20 text-tsr20" },
       { to: "/desk/curve", label: "Curve", end: false, active: "border-tsr20 text-tsr20" },
       { to: "/desk/origin", label: "Origin", end: false, active: "border-accent text-accent" },
       { to: "/desk/stocks", label: "Stocks", end: false, active: "border-tsr20 text-tsr20" },
+      { to: "/desk/risk", label: "Risk", end: false, active: "border-accent text-accent" },
       { to: "/desk/landed-cost", label: "Landed Cost", end: false, active: "border-accent text-accent" },
     ],
   },

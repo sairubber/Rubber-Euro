@@ -15,10 +15,17 @@ logger = logging.getLogger("market_intel")
 
 # Pooled client shared by all meta-description fetches — these run in a small
 # thread pool during each batch commit, and connection reuse matters there.
+# Browser-like UA: the old "ResearchWireBot" string got 403'd by a fair share
+# of publishers, which silently cost us their summaries and images. One
+# transport-level retry absorbs the routine connection reset.
 _http = httpx.Client(
     follow_redirects=True,
-    headers={"User-Agent": "Mozilla/5.0 (compatible; ResearchWireBot/1.0)"},
+    headers={
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept-Language": "en",
+    },
     limits=httpx.Limits(max_connections=16, max_keepalive_connections=8),
+    transport=httpx.HTTPTransport(retries=1),
 )
 
 _PUNCT_RE = re.compile(r"[^\w\s]")
@@ -58,7 +65,20 @@ _IMAGE_PATTERNS = [
     re.compile(r'<meta\s+[^>]*property=["\']og:image(?::url)?["\'][^>]*content=["\']([^"\']+)["\']', re.IGNORECASE),
     re.compile(r'<meta\s+[^>]*content=["\']([^"\']+)["\'][^>]*property=["\']og:image(?::url)?["\']', re.IGNORECASE),
     re.compile(r'<meta\s+[^>]*name=["\']twitter:image["\'][^>]*content=["\']([^"\']+)["\']', re.IGNORECASE),
+    # JSON-LD NewsArticle image — wire services often ship it when the
+    # social-card tags are missing.
+    re.compile(r'"image"\s*:\s*\[?\s*"(https?://[^"\\]{10,500})"', re.IGNORECASE),
+    re.compile(r'"image"\s*:\s*\{[^}]*"url"\s*:\s*"(https?://[^"\\]{10,500})"', re.IGNORECASE),
 ]
+
+# Last-resort content image: an <img> inside the article body with a real
+# size hint. Anything without width/height attributes is skipped — that's
+# where the logos, avatars and pixels live.
+_CONTENT_IMG_RE = re.compile(
+    r'<img[^>]+src=["\']([^"\']+)["\'][^>]*>',
+    re.IGNORECASE,
+)
+_IMG_SIZE_RE = re.compile(r'(?:width|height)=["\']?(\d{3,4})', re.IGNORECASE)
 
 # Sprites, tracking pixels and placeholder chrome dressed up as og:image.
 _BAD_IMAGE = re.compile(
@@ -67,8 +87,20 @@ _BAD_IMAGE = re.compile(
 )
 
 
+def _absolutize(url: str, base_url: str) -> str | None:
+    if url.startswith("//"):
+        return "https:" + url
+    if url.startswith("/"):
+        origin = re.match(r"(https?://[^/]+)", base_url)
+        return origin.group(1) + url if origin else None
+    return url if url.startswith("http") else None
+
+
 def extract_image(html: str, base_url: str) -> str | None:
-    """Absolute URL of the article's lead image, or None."""
+    """Absolute URL of the article's lead image, or None. Tries the social
+    card tags first, then JSON-LD, then — new — a sized content <img> from
+    the body, so articles from publishers without card tags still get their
+    real photo instead of a blank slot."""
     for pattern in _IMAGE_PATTERNS:
         match = pattern.search(html)
         if not match:
@@ -76,16 +108,23 @@ def extract_image(html: str, base_url: str) -> str | None:
         url = html_module.unescape(match.group(1)).strip()
         if not url or _BAD_IMAGE.search(url):
             continue
-        if url.startswith("//"):
-            url = "https:" + url
-        elif url.startswith("/"):
-            origin = re.match(r"(https?://[^/]+)", base_url)
-            if not origin:
-                continue
-            url = origin.group(1) + url
-        elif not url.startswith("http"):
+        absolute = _absolutize(url, base_url)
+        if absolute:
+            return absolute[:600]
+
+    # Content-image fallback: only <img> tags carrying a >=300px width or
+    # height attribute qualify — small/unsized images are chrome, not photos.
+    for match in _CONTENT_IMG_RE.finditer(html):
+        tag = match.group(0)
+        sizes = [int(s) for s in _IMG_SIZE_RE.findall(tag)]
+        if not sizes or max(sizes) < 300:
             continue
-        return url[:600]
+        url = html_module.unescape(match.group(1)).strip()
+        if not url or _BAD_IMAGE.search(url) or url.startswith("data:"):
+            continue
+        absolute = _absolutize(url, base_url)
+        if absolute:
+            return absolute[:600]
     return None
 
 

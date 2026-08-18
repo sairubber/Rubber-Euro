@@ -28,16 +28,18 @@ HEADERS = {
     "Referer": "https://data.eastmoney.com/ifdata/kcsj.html",
 }
 
-# (fetched_at_epoch, series) per requested day-span — the figure changes once
+# (fetched_at_epoch, series) per (code, day-span) — the figure changes once
 # per trading day, so an hour of cache is generous.
-_cache: dict[int, tuple[float, list[dict]]] = {}
+_cache: dict[tuple[str, int], tuple[float, list[dict]]] = {}
 _TTL = 3600
 
 
-def get_nr_warrant_stocks(days: int = 180) -> list[dict]:
-    """Daily series, oldest → newest: {date, tonnes, change}."""
+def get_warrant_stocks(code: str = "nr", days: int = 180) -> list[dict]:
+    """Daily series, oldest → newest: {date, tonnes, change}. code 'nr' =
+    INE TSR20 (the desk's contract); 'RU' = SHFE whole-latex — carried as
+    China rubber-complex context, clearly labelled, never as TSR20."""
     days = min(days, 365)
-    cached_at, cached = _cache.get(days, (0.0, []))
+    cached_at, cached = _cache.get((code, days), (0.0, []))
     if cached and time.time() - cached_at < _TTL:
         return cached
 
@@ -48,7 +50,7 @@ def get_nr_warrant_stocks(days: int = 180) -> list[dict]:
             params={
                 "reportName": "RPT_FUTU_STOCKDATA",
                 "columns": "TRADE_DATE,ON_WARRANT_NUM,ADDCHANGE",
-                "filter": f'(SECURITY_CODE="nr")(TRADE_DATE>=\'{since}\')',
+                "filter": f'(SECURITY_CODE="{code}")(TRADE_DATE>=\'{since}\')',
                 "pageSize": 500,
                 "sortColumns": "TRADE_DATE",
                 "sortTypes": 1,
@@ -69,7 +71,7 @@ def get_nr_warrant_stocks(days: int = 180) -> list[dict]:
             if row.get("ON_WARRANT_NUM") is not None and row.get("TRADE_DATE")
         ]
         if series:
-            _cache[days] = (time.time(), series)
+            _cache[(code, days)] = (time.time(), series)
         return series
     except Exception:
         logger.exception("NR warrant stock fetch failed — serving cached series")
