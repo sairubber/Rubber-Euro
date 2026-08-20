@@ -17,11 +17,13 @@ login or a CLI backend that isn't installed, so nothing here depends on them.
 """
 
 import html
+import json
 import logging
 import re
 import time
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
+from urllib.parse import quote
 
 import httpx
 from defusedxml import ElementTree
@@ -160,6 +162,78 @@ def fetch_feed(url: str, market: str, category: str, max_items: int = 20) -> lis
     if not items:
         return _google_site_fallback(url, market, category, max_items)
     return items
+
+
+# --- Google News link decoding -------------------------------------------
+# A browser UA is required: Google serves the sig/ts-bearing page only to a
+# real-looking client, not to the ResearchWire bot UA above.
+_BROWSER_UA = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+)
+_GN_BATCH_URL = "https://news.google.com/_/DotsSplashUi/data/batchexecute"
+_GN_SIG_RE = re.compile(r'data-n-a-sg="([^"]+)"')
+_GN_TS_RE = re.compile(r'data-n-a-ts="([^"]+)"')
+_GN_ID_RE = re.compile(r'data-n-a-id="([^"]+)"')
+
+
+def decode_google_news_url(url: str) -> str | None:
+    """Resolve a news.google.com/rss/articles/CBMi... redirect to the real
+    publisher URL.
+
+    Google News RSS hands back an opaque redirect, not the article's own URL,
+    and a plain GET only lands back on a Google JS page. The target is
+    recoverable through Google's own batchexecute endpoint: the article page
+    carries a per-article signature + timestamp, and posting those back to
+    DotsSplashUi returns the real URL. This is what lets the bullet pipeline
+    reach the story behind a Google link — without it every Google-sourced
+    item stays summary-less, which is most of a fresh deploy's wall. Returns
+    None on any failure; the caller treats that as "leave the Google URL".
+
+    (The module docstring's "0% of the time" note predates this — decoding
+    now works from this host and from Render, both of which can reach Google.)
+    """
+    if "news.google." not in url or "/articles/" not in url:
+        return None
+    try:
+        art = url.split("/articles/", 1)[1].split("?", 1)[0]
+        headers = {"User-Agent": _BROWSER_UA}
+        page = _http.get(
+            f"https://news.google.com/rss/articles/{art}", headers=headers, timeout=25
+        )
+        sig = _GN_SIG_RE.search(page.text)
+        ts = _GN_TS_RE.search(page.text)
+        aid = _GN_ID_RE.search(page.text)
+        if not (sig and ts and aid):
+            return None
+        inner = json.dumps(
+            [
+                "garturlreq",
+                [
+                    ["X", "X", ["X", "X"], None, None, 1, 1, "US:en", None, 1,
+                     None, None, None, None, None, 0, 1],
+                    "X", "X", 1, [1, 1, 1], 1, 1, None, 0, 0, None, 0,
+                ],
+                aid.group(1), int(ts.group(1)), sig.group(1),
+            ]
+        )
+        freq = json.dumps([[["Fbv4je", inner, None, "generic"]]])
+        resp = _http.post(
+            _GN_BATCH_URL,
+            headers={**headers, "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"},
+            content="f.req=" + quote(freq),
+            timeout=25,
+        )
+        body = resp.text[4:] if resp.text.startswith(")]}'") else resp.text
+        outer = json.loads(body.strip().split("\n", 1)[0])
+        for row in outer:
+            if len(row) > 2 and row[1] == "Fbv4je" and row[2]:
+                real = json.loads(row[2])[1]
+                if isinstance(real, str) and real.startswith("http") and "news.google" not in real:
+                    return real
+    except Exception:
+        logger.warning("Google News URL decode failed: %s", url[:80])
+    return None
 
 
 def fetch_article_page(url: str) -> str | None:

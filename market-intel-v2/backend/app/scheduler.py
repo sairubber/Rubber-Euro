@@ -21,7 +21,7 @@ from app.sgx import sync_sgx_quotes
 from app.shanghai import sync_shanghai_quotes
 from app.analyzer import build_summary, extract_key_points
 from app.news_scraper import is_market_news, iter_niche_query_batches
-from app.rss_wire import fetch_article_page, fetch_full_text, iter_rss_batches
+from app.rss_wire import decode_google_news_url, fetch_article_page, fetch_full_text, iter_rss_batches
 from app.eurostat import iter_eurostat_batches
 from app.trade_data import iter_trade_batches
 from app.translate import translate_article_if_needed
@@ -292,6 +292,62 @@ def run_news_scrape_job(enrich: bool = True) -> None:
 
         for market in ("TSR20", "EURUSD"):
             commit_batch(fetch_market_news(market))
+
+        # Google-link healing: fast-lane and query-sourced items land with an
+        # opaque news.google.com redirect and therefore NO summary — the
+        # image/bullet sweeps below deliberately skip Google URLs because a
+        # direct fetch of one only lands back on Google. Decode the freshest
+        # of them to the real publisher URL, then run the full treatment:
+        # bullets via Jina (which reads through the Cloudflare blocks that stop
+        # a direct fetch from this host), a one-line description as a floor,
+        # and an image. On decode failure, mark key_points done so the item
+        # isn't retried every pass. Full passes only — the fast lane stays fast.
+        if enrich:
+            db = SessionLocal()
+            try:
+                recent = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=48)
+                google_items = (
+                    db.query(NewsArticle)
+                    .filter(
+                        NewsArticle.market_tag == "TSR20",
+                        NewsArticle.key_points.is_(None),
+                        NewsArticle.url.like("%news.google%"),
+                        NewsArticle.published_at >= recent,
+                    )
+                    .order_by(NewsArticle.published_at.desc())
+                    .limit(15)
+                    .all()
+                )
+                decoded = 0
+                for article in google_items:
+                    real = decode_google_news_url(article.url)
+                    if not real:
+                        article.key_points = ""  # decode failed; don't retry forever
+                        continue
+                    article.url = real
+                    decoded += 1
+                    full_text = fetch_full_text(real)
+                    if full_text:
+                        points = extract_key_points(full_text)
+                        article.key_points = "\n".join(points) if points else ""
+                        if not article.description:
+                            article.description = build_summary(full_text)
+                    else:
+                        article.key_points = ""
+                    if article.image_url is None:
+                        page = fetch_article_page(real)
+                        article.image_url = (extract_image(page, real) if page else "") or ""
+                if google_items:
+                    db.commit()
+                    cache.invalidate_all()
+                    logger.info(
+                        "Google-link heal: %d/%d decoded to publisher URLs", decoded, len(google_items)
+                    )
+            except Exception:
+                logger.exception("Google-link heal failed — continuing")
+                db.rollback()
+            finally:
+                db.close()
 
         # Image backfill: the upgraded extractor (JSON-LD + sized content
         # <img> fallbacks) recovers photos the old meta-tags-only pass
