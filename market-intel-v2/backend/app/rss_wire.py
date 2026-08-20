@@ -172,6 +172,12 @@ _BROWSER_UA = (
     "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
 )
 _GN_BATCH_URL = "https://news.google.com/_/DotsSplashUi/data/batchexecute"
+# Datacenter IPs (Render) get Google's "Before you continue" consent
+# interstitial instead of the sig/ts-bearing article page — a residential IP
+# (a dev laptop) is already cookied and never sees it. Presenting an
+# already-consented cookie skips the wall so the real page loads. This is the
+# difference between decode working locally and failing in production.
+_GN_CONSENT_COOKIE = "CONSENT=YES+cb.20210328-17-p0.en+FX+000; SOCS=CAISNQgDEitib3FfaWRlbnRpdHlmcm9udGVuZHVpc2VydmVyXzIwMjQwMTA5LjA2X3AxGgJlbiACGgYIgLC_rgY"
 _GN_SIG_RE = re.compile(r'data-n-a-sg="([^"]+)"')
 _GN_TS_RE = re.compile(r'data-n-a-ts="([^"]+)"')
 _GN_ID_RE = re.compile(r'data-n-a-id="([^"]+)"')
@@ -197,7 +203,7 @@ def decode_google_news_url(url: str) -> str | None:
         return None
     try:
         art = url.split("/articles/", 1)[1].split("?", 1)[0]
-        headers = {"User-Agent": _BROWSER_UA}
+        headers = {"User-Agent": _BROWSER_UA, "Cookie": _GN_CONSENT_COOKIE}
         page = _http.get(
             f"https://news.google.com/rss/articles/{art}", headers=headers, timeout=25
         )
